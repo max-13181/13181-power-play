@@ -11,7 +11,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.teamcode.drive.SampleMecanumDrive;
 
-@Autonomous(group = "drive")
+@Autonomous
 public class CycleAuto extends LinearOpMode {
     DcMotor lift;
     Servo claw;

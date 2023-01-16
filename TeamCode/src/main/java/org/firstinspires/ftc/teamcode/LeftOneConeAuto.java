@@ -18,7 +18,7 @@ import org.openftc.easyopencv.OpenCvCameraRotation;
 
 import java.util.ArrayList;
 
-@Autonomous(group = "drive")
+@Autonomous
 public class LeftOneConeAuto extends LinearOpMode {
     DcMotor lift;
     Servo claw;

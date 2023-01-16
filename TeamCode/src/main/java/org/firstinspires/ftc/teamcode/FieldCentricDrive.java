@@ -10,14 +10,13 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.teamcode.util.AxisDirection;
 import org.firstinspires.ftc.teamcode.util.BNO055IMUUtil;
 
-@TeleOp(group = "")
+@TeleOp
 public class FieldCentricDrive extends LinearOpMode {
   @Override
   public void runOpMode() {
-    double reverse = 1;
-    double speedMod = 1;
+    double speedMod;
 
-    double claw_pos = 1;
+    double claw_pos;
     double arm_pos = 0;
     boolean arm_prev = false;
 

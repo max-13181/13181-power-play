@@ -10,7 +10,7 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.teamcode.util.AxisDirection;
 import org.firstinspires.ftc.teamcode.util.BNO055IMUUtil;
 
-@TeleOp(group = "")
+@TeleOp
 public class MixedMechanumDrive extends LinearOpMode {
   @Override
   public void runOpMode() {
