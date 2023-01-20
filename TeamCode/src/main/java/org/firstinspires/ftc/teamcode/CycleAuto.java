@@ -28,56 +28,80 @@ public class CycleAuto extends LinearOpMode {
 
         SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
 
-        Pose2d startPose = new Pose2d(35, -62, Math.toRadians(-90));
-
-        drive.setPoseEstimate(startPose);
-
-        Trajectory traj1 = drive.trajectoryBuilder(startPose)
-                .lineTo(new Vector2d(31, -13))
-                .build();
-
-        Trajectory traj2 = drive.trajectoryBuilder(traj1.end().plus(new Pose2d(0, 0, Math.toRadians(90))))
-                .lineTo(new Vector2d(15, -15))
-                .build();
-
-        Trajectory trajToCone = drive.trajectoryBuilder(traj1.end().plus(new Pose2d(0, 0, Math.toRadians(90))))
-                .lineToLinearHeading(new Pose2d(50, -13, Math.toRadians(0)))
-                .build();
-
-        Trajectory trajToHigh = drive.trajectoryBuilder(trajToCone.end())
-                .lineToLinearHeading(new Pose2d(31, -13, Math.toRadians(0)))
-                .build();
-
-        claw.setPosition(0.5); // close
-        arm.setPosition(0); // forward
-
         waitForStart();
 
-        drive.followTrajectory(traj1);
-        drive.turn(Math.toRadians(90));
-
-        arm.setPosition(0.45); // at angle
-        setLift(3900, 0.9);
-        claw.setPosition(1); // open
-        sleep(750);
+        setLift(1500, 1);
+        claw.setPosition(0.8); // open
         arm.setPosition(0); // forward
         sleep(500);
-        setLift(750, 0.9);
 
-        drive.followTrajectory(trajToCone);
+        int lower = 120;
+        int cur_pos = 570;
+
+        setLift(cur_pos, 1);
+        cur_pos -= lower;
         claw.setPosition(0.5); // close
-        sleep(750);
-
-        drive.followTrajectory(trajToHigh);
-        arm.setPosition(0.45); // at angle
-        setLift(3900, 0.9);
-        claw.setPosition(1); // open
-        sleep(750);
-        arm.setPosition(0); // forward
         sleep(500);
-        setLift(750, 0.9);
+
+        // up back release
+        placeCone();
+        // forward down grab
+        grabCone(cur_pos);
+        cur_pos -= lower;
+
+        // up back release
+        placeCone();
+        // forward down grab
+        grabCone(cur_pos);
+        cur_pos -= lower;
+
+        // up back release
+        placeCone();
+        // forward down grab
+        grabCone(cur_pos);
+        cur_pos -= lower;
+
+        // up back release
+        placeCone();
+        // forward down grab
+        grabCone(cur_pos);
+        cur_pos -= lower;
+
+        // up back release
+        placeCone();
+        // forward down grab
+        grabCone(cur_pos);
 
         sleep(10000);
+    }
+
+    public void grabCone(int height) {
+        arm.setPosition(0); // forward
+        sleep(1000);
+        setLift(height, 1);
+        claw.setPosition(0.5); // close
+        sleep(500);
+    }
+
+    public void placeCone() {
+        lift.setPower(1);
+        sleep(500);
+        arm.setPosition(1); // backward
+        setLift(1750, 1);
+        setLift(1500, 0.5);
+        claw.setPosition(0.8); // open
+        sleep(250);
+
+        // works
+        /*
+        setLift(lift.getCurrentPosition()+500, 1);
+        arm.setPosition(1); // backward
+        sleep(1000);
+        setLift(1750, 1);
+        setLift(1500, 1);
+        claw.setPosition(0.8); // open
+        sleep(250);
+        // */
     }
 
     public void setLift(int pos, double speed) {

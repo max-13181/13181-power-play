@@ -5,7 +5,9 @@ import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
+import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.Servo;
+import com.qualcomm.robotcore.util.ElapsedTime;
 
 import org.firstinspires.ftc.teamcode.util.AxisDirection;
 import org.firstinspires.ftc.teamcode.util.BNO055IMUUtil;
@@ -14,7 +16,17 @@ import org.firstinspires.ftc.teamcode.util.BNO055IMUUtil;
 public class MixedMechanumDrive extends LinearOpMode {
   @Override
   public void runOpMode() {
+    Gamepad.RumbleEffect customRumbleEffect = new Gamepad.RumbleEffect.Builder()
+            .addStep(1.0, 1.0, 500)  //  Rumble for 500 mSec
+            .addStep(0.0, 0.0, 500)  //  Pause for 500 mSec
+            .addStep(1.0, 1.0, 500)  //  Rumble for 500 mSec
+            .addStep(0.0, 0.0, 500)  //  Pause for 500 mSec
+            .addStep(1.0, 1.0, 500)  //  Rumble for 500 mSec
+            .build();
+    ElapsedTime runtime = new ElapsedTime();
+
     double speedMod = 1;
+    boolean has_rumbled = false;
 
     double claw_pos = 1;
     double arm_pos = 0;
@@ -60,10 +72,17 @@ public class MixedMechanumDrive extends LinearOpMode {
     imu.initialize(parameters);
     
     waitForStart();
+    runtime.reset();
 
     if (isStopRequested()) return;
 
     while (opModeIsActive()) {
+
+      if (runtime.seconds() > 60 && !has_rumbled) {
+        gamepad1.runRumbleEffect(customRumbleEffect);
+        gamepad2.runRumbleEffect(customRumbleEffect);
+        has_rumbled = true;
+      }
 
       if (gamepad1.left_bumper) {
         speedMod = 1;
@@ -151,7 +170,7 @@ public class MixedMechanumDrive extends LinearOpMode {
       }
 
       if (gamepad2.right_bumper) {
-        claw_pos = 0.5; // close
+        claw_pos = 0.57; // close
       } else {
         claw_pos = 1;
       }

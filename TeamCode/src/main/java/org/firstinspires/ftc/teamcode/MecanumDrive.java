@@ -97,7 +97,7 @@ public class MecanumDrive extends LinearOpMode {
         lift.setPower(-gamepad2.left_stick_y);
 
         if (gamepad2.right_bumper) {
-          claw_pos = 0.45; // close
+          claw_pos = 0.55; // close
         } else {
           claw_pos = 1;
         }

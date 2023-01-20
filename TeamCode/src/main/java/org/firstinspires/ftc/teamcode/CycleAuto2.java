@@ -32,8 +32,10 @@ public class CycleAuto2 extends LinearOpMode {
 
         drive.setPoseEstimate(startPose);
 
+        Vector2d cone_location = new Vector2d(62, -12);
+
         Trajectory first_to = drive.trajectoryBuilder(startPose, Math.toRadians(0))
-                .lineTo(new Vector2d(61, -12))
+                .lineTo(cone_location)
                 .build();
 
         Trajectory back_to_high = drive.trajectoryBuilder(first_to.end(), Math.toRadians(180))
@@ -41,7 +43,7 @@ public class CycleAuto2 extends LinearOpMode {
                 .build();
 
         Trajectory to_cones = drive.trajectoryBuilder(back_to_high.end(), Math.toRadians(-20))
-                .splineToConstantHeading(new Vector2d(61, -12), Math.toRadians(0))
+                .splineToConstantHeading(cone_location, Math.toRadians(0))
                 .build();
 
         claw.setPosition(0.5); // close
@@ -100,8 +102,6 @@ public class CycleAuto2 extends LinearOpMode {
         drive.followTrajectory(to_cones);
         sleep(200);
         claw.setPosition(0.5); // close
-//        sleep(500);
-//        setLift(1500, 1);
 
         sleep(10000);
     }
