@@ -20,28 +20,24 @@ public class RightCycle extends LinearOpMode {
         Arm arm = new Arm(hardwareMap.servo.get("arm"));
         Lift lift = new Lift(hardwareMap.dcMotor.get("lift"));
 
-        int signal_pos = 2;
+        int signal_pos = 0;
 
         Pose2d startPose = new Pose2d(32, -61.5, Math.toRadians(-90));
         drive.setPoseEstimate(startPose);
 
-        Pose2d highCone = new Pose2d(34, -10, Math.toRadians(0));
+        Pose2d highCone = new Pose2d(33, -10, Math.toRadians(0));
 
         TrajectorySequence startToHigh = drive.trajectorySequenceBuilder(startPose)
-                .addDisplacementMarker(() -> {
-                    // raises lift
-                    lift.goTo(4000, 1);
-                })
+                .addDisplacementMarker(() -> lift.goTo(4000, 1))
                 .UNSTABLE_addTemporalMarkerOffset(0.5, arm::mid) // sets arm at an angle
                 // goes to high
                 .setTangent(Math.toRadians(80))
                 .splineToSplineHeading(highCone, Math.toRadians(105))
                 .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
-                .waitSeconds(0.01)
                 .build();
 
         TrajectorySequence cycleTraj = drive.trajectorySequenceBuilder(startToHigh.end())
-                // put arm foward and lower lift
+                // put arm forward and lower lift
                 .addTemporalMarker(arm::forward)
                 .addTemporalMarker(0.2, () -> {
                     lift.goToSavedPos();
@@ -54,9 +50,7 @@ public class RightCycle extends LinearOpMode {
                 .UNSTABLE_addTemporalMarkerOffset(0.1, claw::close)
                 .waitSeconds(0.4)
                 // raises lift
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> {
-                    lift.goTo(4000, 1);
-                })
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(4000, 1))
                 .waitSeconds(0.5)
                 // put arm mid WHILE going to high
                 .UNSTABLE_addTemporalMarkerOffset(0.2, arm::mid)
@@ -74,12 +68,13 @@ public class RightCycle extends LinearOpMode {
                 .build();
 
         TrajectorySequence park2 = drive.trajectorySequenceBuilder(cycleTraj.end())
-                .lineTo(new Vector2d(36, -12))
+                .addDisplacementMarker(arm::forward)
+                .lineTo(new Vector2d(38, -14))
                 .build();
 
         TrajectorySequence park3 = drive.trajectorySequenceBuilder(cycleTraj.end())
                 .setTangent(Math.toRadians(-35))
-                .splineToConstantHeading(new Vector2d(64, -20), Math.toRadians(0))
+                .splineToConstantHeading(new Vector2d(58, -14), Math.toRadians(0))
                 .build();
 
         claw.close();
@@ -90,7 +85,6 @@ public class RightCycle extends LinearOpMode {
         if (!isStopRequested()) {
             drive.followTrajectorySequence(startToHigh);
             drive.followTrajectorySequence(cycleTraj);
-
             if (signal_pos == 1) {
                 drive.followTrajectorySequence(park1);
             } else if (signal_pos == 2) {
