@@ -1,29 +1,10 @@
-/*
- * Copyright (c) 2021 OpenFTC Team
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in all
- * copies or substantial portions of the Software.
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
- * SOFTWARE.
- */
-
-package org.firstinspires.ftc.teamcode;
+package org.firstinspires.ftc.teamcode.archive;
 
 import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.trajectory.Trajectory;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
@@ -38,9 +19,13 @@ import org.openftc.easyopencv.OpenCvCameraRotation;
 
 import java.util.ArrayList;
 
+@Disabled
 @Autonomous
-public class ScanAuto extends LinearOpMode
-{
+public class RightOneConeAuto extends LinearOpMode {
+    DcMotor lift;
+    Servo claw;
+    Servo arm;
+
     OpenCvCamera camera;
     AprilTagDetectionPipeline aprilTagDetectionPipeline;
 
@@ -61,29 +46,43 @@ public class ScanAuto extends LinearOpMode
     AprilTagDetection tagOfInterest = null;
 
     @Override
-    public void runOpMode() throws InterruptedException
-    {
-        Servo claw = hardwareMap.servo.get("claw");
-        Servo arm = hardwareMap.servo.get("arm");
+    public void runOpMode() throws InterruptedException {
+        claw = hardwareMap.servo.get("claw");
+        arm = hardwareMap.servo.get("arm");
+        lift = hardwareMap.dcMotor.get("lift");
 
-        DcMotor lift = hardwareMap.dcMotor.get("lift");
         lift.setDirection(DcMotorSimple.Direction.REVERSE);
         lift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
 
-        arm.setPosition(0); // arm in
-        claw.setPosition(0.5); // closed
-
         SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
 
-        Trajectory backwardTraj = drive.trajectoryBuilder(new Pose2d())
-                .back(28)
+        Pose2d startPose = new Pose2d(32, -63, Math.toRadians(-90));
+
+        drive.setPoseEstimate(startPose);
+
+        // old prev.
+//        Trajectory trajToHigh = drive.trajectoryBuilder(startPose, Math.toRadians(65))
+//                .splineToConstantHeading(new Vector2d(35, -12.5), Math.toRadians(90))
+//                .build();
+
+        Trajectory trajToHigh = drive.trajectoryBuilder(startPose, Math.toRadians(65))
+                .splineToConstantHeading(new Vector2d(34, -13), Math.toRadians(90))
                 .build();
-        Trajectory leftTraj = drive.trajectoryBuilder(backwardTraj.end())
-                .strafeLeft(25)
+
+        Trajectory strafeRight = drive.trajectoryBuilder(trajToHigh.end().plus(new Pose2d(0, 0, Math.toRadians(90))))
+                .strafeRight(4)
                 .build();
-        Trajectory rightTraj = drive.trajectoryBuilder(backwardTraj.end())
-                .strafeRight(25)
+
+        Trajectory driveForward = drive.trajectoryBuilder(strafeRight.end())
+                .forward(23)
                 .build();
+
+        Trajectory driveBackward = drive.trajectoryBuilder(strafeRight.end())
+                .back(24)
+                .build();
+
+        claw.setPosition(0.5); // close
+        arm.setPosition(0); // forward
 
         int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
         camera = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
@@ -111,55 +110,41 @@ public class ScanAuto extends LinearOpMode
          * The INIT-loop:
          * This REPLACES waitForStart!
          */
-        while (!isStarted() && !isStopRequested())
-        {
+        while (!isStarted() && !isStopRequested()) {
             ArrayList<AprilTagDetection> currentDetections = aprilTagDetectionPipeline.getLatestDetections();
 
-            if(currentDetections.size() != 0)
-            {
+            if(currentDetections.size() != 0) {
                 boolean tagFound = false;
 
-                for(AprilTagDetection tag : currentDetections)
-                {
-                    if(tag.id == 1 || tag.id == 2 || tag.id == 3)
-                    {
+                for(AprilTagDetection tag : currentDetections) {
+                    if(tag.id == 1 || tag.id == 2 || tag.id == 3) {
                         tagOfInterest = tag;
                         tagFound = true;
                         break;
                     }
                 }
 
-                if(tagFound)
-                {
+                if(tagFound) {
                     telemetry.addLine("Tag of interest is in sight!\n\nLocation data:");
                     tagToTelemetry(tagOfInterest);
-                }
-                else
-                {
+                } else {
                     telemetry.addLine("Don't see tag of interest :(");
 
-                    if(tagOfInterest == null)
-                    {
+                    if(tagOfInterest == null) {
                         telemetry.addLine("(The tag has never been seen)");
-                    }
-                    else
-                    {
+                    } else {
                         telemetry.addLine("\nBut we HAVE seen the tag before; last seen at:");
                         tagToTelemetry(tagOfInterest);
                     }
                 }
 
             }
-            else
-            {
+            else {
                 telemetry.addLine("Don't see tag of interest :(");
 
-                if(tagOfInterest == null)
-                {
+                if(tagOfInterest == null) {
                     telemetry.addLine("(The tag has never been seen)");
-                }
-                else
-                {
+                } else {
                     telemetry.addLine("\nBut we HAVE seen the tag before; last seen at:");
                     tagToTelemetry(tagOfInterest);
                 }
@@ -170,55 +155,68 @@ public class ScanAuto extends LinearOpMode
             sleep(20);
         }
 
-        /*
-         * The START command just came in: now work off the latest snapshot acquired
-         * during the init loop.
-         */
-
-        /* Update the telemetry */
-        if(tagOfInterest != null)
-        {
+        if(tagOfInterest != null) {
             telemetry.addLine("Tag snapshot:\n");
             tagToTelemetry(tagOfInterest);
             telemetry.update();
-        }
-        else
-        {
+        } else {
             telemetry.addLine("No tag snapshot available, it was never sighted during the init loop :(");
             telemetry.update();
         }
 
-        drive.followTrajectory(backwardTraj); // drives to mid
+        drive.followTrajectory(trajToHigh);
+        drive.turn(Math.toRadians(90));
 
-        /* Actually do something useful */
-        if(tagOfInterest == null)
-        {
-            drive.followTrajectory(leftTraj);
-        }
-        else
-        {
-            /*
-             * Insert your autonomous code here, probably using the tag pose to decide your configuration.
-             */
+        setLift(750, 0.9);
+        arm.setPosition(0.5); // at angle
+        setLift(2000, 0.9);
+        sleep(750);
+        sleep(5000);
+        claw.setPosition(1); // open
+        sleep(750);
+        arm.setPosition(0); // forward
+        sleep(500);
+//        setLift(0, 0.9);
 
-            // e.g.
-            if(tagOfInterest.id == 1)
-            {
-                drive.followTrajectory(rightTraj);
-            }
-            else if(tagOfInterest.id == 2)
-            {
+        drive.followTrajectory(strafeRight);
+
+        if (tagOfInterest == null) {
+            // no tag found
+            // do nothing
+        } else {
+            if(tagOfInterest.id == 1) {
+                drive.followTrajectory(driveBackward);
+            } else if (tagOfInterest.id == 2) {
                 // do nothing
+            } else if(tagOfInterest.id == 3) {
+                drive.followTrajectory(driveForward);
             }
-            else if(tagOfInterest.id == 3)
-            {
-                drive.followTrajectory(leftTraj);
+        }
+    }
+
+    public void setLift(int pos, double speed) {
+        // set target positions
+        lift.setTargetPosition(pos);
+
+        // turn on RUN_TO_POSITION
+        lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
+
+        // set power
+        lift.setPower(speed);
+
+        boolean waitCondition = true;
+
+        while (opModeIsActive() && waitCondition) {
+            if (!lift.isBusy()) {
+                waitCondition = false;
             }
         }
 
+        // stop all motion
+        lift.setPower(0.01);
 
-        /* You wouldn't have this in your autonomous, this is just to prevent the sample from ending */
-        while (opModeIsActive()) {sleep(20);}
+        // turn off RUN_TO_POSITION
+        lift.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
     }
 
     void tagToTelemetry(AprilTagDetection detection)

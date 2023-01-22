@@ -25,13 +25,45 @@ public class MeepMeepTesting {
         // y is up/down
         // x is left/right
 
-        Pose2d startPose = new Pose2d(31.5, -55.3-3.5, Math.toRadians(-90));
+        Pose2d startPose = new Pose2d(31.7, -8.5, Math.toRadians(0));
         drive.setStartPose(startPose);
 
+        // 2
+        /*
         RoadRunnerBotEntity path = drive.followTrajectorySequence(traj ->
                 traj.trajectorySequenceBuilder(startPose)
-                        .lineTo(new Vector2d(39.5, -58.8)) // edge
-                        .lineTo(new Vector2d(35, -55.3))
+                        .lineTo(new Vector2d(36, -12))
+                        .build()
+        );
+        */
+
+        // 3
+        /*
+        RoadRunnerBotEntity path = drive.followTrajectorySequence(traj ->
+                traj.trajectorySequenceBuilder(startPose)
+                        // drives to stack
+                        .setTangent(Math.toRadians(-35))
+                        .splineToConstantHeading(new Vector2d(58, -14), Math.toRadians(0))
+                        .build()
+        );
+        */
+
+        // 1
+        /*
+        RoadRunnerBotEntity path = drive.followTrajectorySequence(traj ->
+                traj.trajectorySequenceBuilder(startPose)
+                        // drives to stack
+                        .setTangent(Math.toRadians(-140))
+                        .splineToConstantHeading(new Vector2d(11, -12), Math.toRadians(180))
+                        .build()
+        );
+        */
+
+        RoadRunnerBotEntity path = drive.followTrajectorySequence(traj ->
+                traj.trajectorySequenceBuilder(new Pose2d(11, -12, 0))
+                        // drives to stack
+                        .setTangent(Math.toRadians(-140))
+                        .lineTo(new Vector2d(58, -12))
                         .build()
         );
 

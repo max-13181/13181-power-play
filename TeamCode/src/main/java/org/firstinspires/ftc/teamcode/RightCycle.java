@@ -1,13 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
-import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.MAX_ACCEL;
-import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.MAX_ANG_VEL;
-import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.MAX_VEL;
-import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.TRACK_WIDTH;
-
 import com.acmerobotics.roadrunner.geometry.Pose2d;
-import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryAccelerationConstraint;
-import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityConstraint;
+import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -17,17 +11,8 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.teamcode.roadrunner.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequence;
 
-@Autonomous(group="alpha")
-public class TrajectoryTest extends LinearOpMode {
-
-    TrajectoryVelocityConstraint defaultVelocity = SampleMecanumDrive.getVelocityConstraint(MAX_VEL, MAX_ANG_VEL, TRACK_WIDTH);
-    TrajectoryAccelerationConstraint defaultAcceleration = SampleMecanumDrive.getAccelerationConstraint(MAX_ACCEL);
-
-    double boost_percent = 1.5;
-
-    TrajectoryVelocityConstraint boostedVelocity = SampleMecanumDrive.getVelocityConstraint(MAX_VEL * boost_percent, MAX_ANG_VEL, TRACK_WIDTH);
-    TrajectoryAccelerationConstraint boostedAcceleration = SampleMecanumDrive.getAccelerationConstraint(MAX_ACCEL * boost_percent);
-
+@Autonomous
+public class RightCycle extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
@@ -35,26 +20,66 @@ public class TrajectoryTest extends LinearOpMode {
         Arm arm = new Arm(hardwareMap.servo.get("arm"));
         Lift lift = new Lift(hardwareMap.dcMotor.get("lift"));
 
+        int signal_pos = 2;
+
         Pose2d startPose = new Pose2d(32, -61.5, Math.toRadians(-90));
         drive.setPoseEstimate(startPose);
 
-        Pose2d highCone = new Pose2d(31.7, -8.5, Math.toRadians(0));
+        Pose2d highCone = new Pose2d(34, -10, Math.toRadians(0));
 
-        TrajectorySequence startToHighMovementOnly = drive.trajectorySequenceBuilder(startPose)
-                .setConstraints(boostedVelocity, boostedAcceleration)
+        TrajectorySequence startToHigh = drive.trajectorySequenceBuilder(startPose)
+                .addDisplacementMarker(() -> {
+                    // raises lift
+                    lift.goTo(4000, 1);
+                })
+                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::mid) // sets arm at an angle
                 // goes to high
                 .setTangent(Math.toRadians(80))
                 .splineToSplineHeading(highCone, Math.toRadians(105))
+                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
+                .waitSeconds(0.01)
                 .build();
 
-        TrajectorySequence cycleTrajMovementOnly = drive.trajectorySequenceBuilder(startToHighMovementOnly.end())
-                .setConstraints(boostedVelocity, boostedAcceleration)
+        TrajectorySequence cycleTraj = drive.trajectorySequenceBuilder(startToHigh.end())
+                // put arm foward and lower lift
+                .addTemporalMarker(arm::forward)
+                .addTemporalMarker(0.2, () -> {
+                    lift.goToSavedPos();
+                    lift.lowerSavedPos();
+                })
                 // drives to stack
                 .setTangent(Math.toRadians(-35))
                 .splineToSplineHeading(new Pose2d(62, -15, Math.toRadians(0)), Math.toRadians(0))
+                // close claw
+                .UNSTABLE_addTemporalMarkerOffset(0.1, claw::close)
+                .waitSeconds(0.4)
+                // raises lift
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> {
+                    lift.goTo(4000, 1);
+                })
+                .waitSeconds(0.5)
+                // put arm mid WHILE going to high
+                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::mid)
                 // goes to high
                 .setTangent(Math.toRadians(180))
                 .splineToSplineHeading(highCone, Math.toRadians(180-35))
+                // open claw
+                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
+                .waitSeconds(0.1)
+                .build();
+
+        TrajectorySequence park1 = drive.trajectorySequenceBuilder(cycleTraj.end())
+                .setTangent(Math.toRadians(-140))
+                .splineToConstantHeading(new Vector2d(11, -12), Math.toRadians(180))
+                .build();
+
+        TrajectorySequence park2 = drive.trajectorySequenceBuilder(cycleTraj.end())
+                .lineTo(new Vector2d(36, -12))
+                .build();
+
+        TrajectorySequence park3 = drive.trajectorySequenceBuilder(cycleTraj.end())
+                .setTangent(Math.toRadians(-35))
+                .splineToConstantHeading(new Vector2d(64, -20), Math.toRadians(0))
                 .build();
 
         claw.close();
@@ -63,11 +88,16 @@ public class TrajectoryTest extends LinearOpMode {
         waitForStart();
 
         if (!isStopRequested()) {
-            drive.followTrajectorySequence(startToHighMovementOnly);
-            drive.followTrajectorySequence(cycleTrajMovementOnly);
-            drive.followTrajectorySequence(cycleTrajMovementOnly);
-            drive.followTrajectorySequence(cycleTrajMovementOnly);
-            drive.followTrajectorySequence(cycleTrajMovementOnly);
+            drive.followTrajectorySequence(startToHigh);
+            drive.followTrajectorySequence(cycleTraj);
+
+            if (signal_pos == 1) {
+                drive.followTrajectorySequence(park1);
+            } else if (signal_pos == 2) {
+                drive.followTrajectorySequence(park2);
+            } else if (signal_pos == 3) {
+                drive.followTrajectorySequence(park3);
+            }
         }
 
         sleep(10000);

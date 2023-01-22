@@ -27,11 +27,9 @@ public class MeepMeepCycles {
 
         RoadRunnerBotEntity path = drive.followTrajectorySequence(traj ->
                 traj.trajectorySequenceBuilder(startPose)
-                        // comes away from the wall
-                        .lineTo(new Vector2d(35, -53))
                         // goes to high
-                        .setTangent(Math.toRadians(90))
-                        .splineToSplineHeading(new Pose2d(31.3, -8.3, Math.toRadians(0)), Math.toRadians(110))
+                        .setTangent(Math.toRadians(80))
+                        .splineToSplineHeading(new Pose2d(31.3, -8.3, Math.toRadians(0)), Math.toRadians(105))
                         // drives to stack
                         .setTangent(Math.toRadians(-35))
                         .splineToConstantHeading(new Vector2d(58, -14), Math.toRadians(0))
