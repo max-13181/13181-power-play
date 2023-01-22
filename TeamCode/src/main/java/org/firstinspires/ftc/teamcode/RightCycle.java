@@ -1,5 +1,7 @@
 package org.firstinspires.ftc.teamcode;
 
+import android.annotation.SuppressLint;
+
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
@@ -8,8 +10,15 @@ import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
+import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
 import org.firstinspires.ftc.teamcode.roadrunner.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequence;
+import org.openftc.apriltag.AprilTagDetection;
+import org.openftc.easyopencv.OpenCvCamera;
+import org.openftc.easyopencv.OpenCvCameraFactory;
+import org.openftc.easyopencv.OpenCvCameraRotation;
+
+import java.util.ArrayList;
 
 @Autonomous
 public class RightCycle extends LinearOpMode {
@@ -20,12 +29,14 @@ public class RightCycle extends LinearOpMode {
         Arm arm = new Arm(hardwareMap.servo.get("arm"));
         Lift lift = new Lift(hardwareMap.dcMotor.get("lift"));
 
-        int signal_pos = 0;
+        AprilTag at = new AprilTag();
+
+        int signal_pos = 2;
 
         Pose2d startPose = new Pose2d(32, -61.5, Math.toRadians(-90));
         drive.setPoseEstimate(startPose);
 
-        Pose2d highCone = new Pose2d(33, -10, Math.toRadians(0));
+        Pose2d highCone = new Pose2d(33, -9, Math.toRadians(0));
 
         TrajectorySequence startToHigh = drive.trajectorySequenceBuilder(startPose)
                 .addDisplacementMarker(() -> lift.goTo(4000, 1))
@@ -33,58 +44,76 @@ public class RightCycle extends LinearOpMode {
                 // goes to high
                 .setTangent(Math.toRadians(80))
                 .splineToSplineHeading(highCone, Math.toRadians(105))
-                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
                 .build();
 
-        TrajectorySequence cycleTraj = drive.trajectorySequenceBuilder(startToHigh.end())
-                // put arm forward and lower lift
-                .addTemporalMarker(arm::forward)
-                .addTemporalMarker(0.2, () -> {
+        TrajectorySequence cycle = drive.trajectorySequenceBuilder(startToHigh.end())
+                // lower lift
+                .addDisplacementMarker(() -> {
                     lift.goToSavedPos();
                     lift.lowerSavedPos();
                 })
+                .waitSeconds(0.2)
+                // open claw and forward arm
+                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
+                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
+                // close claw when at the stack
+                .UNSTABLE_addDisplacementMarkerOffset(26, claw::close)
                 // drives to stack
                 .setTangent(Math.toRadians(-35))
                 .splineToSplineHeading(new Pose2d(62, -15, Math.toRadians(0)), Math.toRadians(0))
-                // close claw
-                .UNSTABLE_addTemporalMarkerOffset(0.1, claw::close)
-                .waitSeconds(0.4)
                 // raises lift
                 .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(4000, 1))
-                .waitSeconds(0.5)
+                .waitSeconds(0.4)
                 // put arm mid WHILE going to high
                 .UNSTABLE_addTemporalMarkerOffset(0.2, arm::mid)
                 // goes to high
                 .setTangent(Math.toRadians(180))
                 .splineToSplineHeading(highCone, Math.toRadians(180-35))
-                // open claw
-                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
-                .waitSeconds(0.1)
                 .build();
 
-        TrajectorySequence park1 = drive.trajectorySequenceBuilder(cycleTraj.end())
+        // untested
+        TrajectorySequence park1 = drive.trajectorySequenceBuilder(cycle.end())
+                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
+                .waitSeconds(0.5)
                 .setTangent(Math.toRadians(-140))
                 .splineToConstantHeading(new Vector2d(11, -12), Math.toRadians(180))
                 .build();
 
-        TrajectorySequence park2 = drive.trajectorySequenceBuilder(cycleTraj.end())
-                .addDisplacementMarker(arm::forward)
-                .lineTo(new Vector2d(38, -14))
+        TrajectorySequence park2 = drive.trajectorySequenceBuilder(cycle.end())
+                .addDisplacementMarker(() -> lift.goTo(500, 1))
+                .waitSeconds(0.2)
+                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
+                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
+                .lineTo(new Vector2d(36, -14))
                 .build();
 
-        TrajectorySequence park3 = drive.trajectorySequenceBuilder(cycleTraj.end())
+        TrajectorySequence park3 = drive.trajectorySequenceBuilder(cycle.end())
+                .addDisplacementMarker(() -> lift.goTo(500, 1))
+                .waitSeconds(0.2)
+                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
+                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
                 .setTangent(Math.toRadians(-35))
-                .splineToConstantHeading(new Vector2d(58, -14), Math.toRadians(0))
+                .splineToConstantHeading(new Vector2d(59, -14), Math.toRadians(0))
                 .build();
 
         claw.close();
         arm.forward();
 
-        waitForStart();
+        while (!isStarted() && !isStopRequested()) {
+            at.detect();
+        }
+
+        if (at.tagOfInterest != null) {
+            signal_pos = at.tagOfInterest.id;
+        }
 
         if (!isStopRequested()) {
             drive.followTrajectorySequence(startToHigh);
-            drive.followTrajectorySequence(cycleTraj);
+            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(cycle);
+
             if (signal_pos == 1) {
                 drive.followTrajectorySequence(park1);
             } else if (signal_pos == 2) {
@@ -165,6 +194,106 @@ public class RightCycle extends LinearOpMode {
 
         public void set(double pos) {
             this.main.setPosition(pos);
+        }
+    }
+
+    class AprilTag {
+        OpenCvCamera camera;
+        AprilTagDetectionPipeline aprilTagDetectionPipeline;
+
+        static final double FEET_PER_METER = 3.28084;
+
+        // Lens intrinsics
+        // UNITS ARE PIXELS
+        // NOTE: this calibration is for the C920 webcam at 800x448.
+        // You will need to do your own calibration for other configurations!
+        double fx = 578.272;
+        double fy = 578.272;
+        double cx = 402.145;
+        double cy = 221.506;
+
+        // UNITS ARE METERS
+        double tagsize = 0.166;
+
+        AprilTagDetection tagOfInterest = null;
+
+        public AprilTag() {
+            int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
+            camera = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
+            aprilTagDetectionPipeline = new AprilTagDetectionPipeline(tagsize, fx, fy, cx, cy);
+
+            camera.setPipeline(aprilTagDetectionPipeline);
+            camera.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
+            {
+                @Override
+                public void onOpened()
+                {
+                    camera.startStreaming(800,448, OpenCvCameraRotation.UPRIGHT);
+                }
+
+                @Override
+                public void onError(int errorCode)
+                {
+
+                }
+            });
+        }
+
+        public void detect() {
+            ArrayList<AprilTagDetection> currentDetections = aprilTagDetectionPipeline.getLatestDetections();
+
+            if(currentDetections.size() != 0) {
+                boolean tagFound = false;
+
+                for(AprilTagDetection tag : currentDetections) {
+                    if(tag.id == 1 || tag.id == 2 || tag.id == 3) {
+                        tagOfInterest = tag;
+                        tagFound = true;
+                        break;
+                    }
+                }
+
+                if(tagFound) {
+                    telemetry.addLine("Tag of interest is in sight!\n\nLocation data:");
+                    tagToTelemetry(tagOfInterest);
+                }
+                else {
+                    telemetry.addLine("Don't see tag of interest :(");
+
+                    if(tagOfInterest == null) {
+                        telemetry.addLine("(The tag has never been seen)");
+                    } else {
+                        telemetry.addLine("\nBut we HAVE seen the tag before; last seen at:");
+                        tagToTelemetry(tagOfInterest);
+                    }
+                }
+
+            } else {
+                telemetry.addLine("Don't see tag of interest :(");
+
+                if(tagOfInterest == null) {
+                    telemetry.addLine("(The tag has never been seen)");
+                } else {
+                    telemetry.addLine("\nBut we HAVE seen the tag before; last seen at:");
+                    tagToTelemetry(tagOfInterest);
+                }
+
+            }
+
+            telemetry.update();
+            sleep(20);
+        }
+
+        @SuppressLint("DefaultLocale")
+        void tagToTelemetry(AprilTagDetection detection)
+        {
+            telemetry.addLine(String.format("\nDetected tag ID=%d", detection.id));
+            telemetry.addLine(String.format("Translation X: %.2f feet", detection.pose.x*FEET_PER_METER));
+            telemetry.addLine(String.format("Translation Y: %.2f feet", detection.pose.y*FEET_PER_METER));
+            telemetry.addLine(String.format("Translation Z: %.2f feet", detection.pose.z*FEET_PER_METER));
+            telemetry.addLine(String.format("Rotation Yaw: %.2f degrees", Math.toDegrees(detection.pose.yaw)));
+            telemetry.addLine(String.format("Rotation Pitch: %.2f degrees", Math.toDegrees(detection.pose.pitch)));
+            telemetry.addLine(String.format("Rotation Roll: %.2f degrees", Math.toDegrees(detection.pose.roll)));
         }
     }
 }
