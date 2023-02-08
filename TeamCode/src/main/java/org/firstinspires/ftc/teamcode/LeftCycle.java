@@ -1,16 +1,9 @@
 package org.firstinspires.ftc.teamcode;
 
-import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.MAX_ACCEL;
-import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.MAX_ANG_VEL;
-import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.MAX_VEL;
-import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.TRACK_WIDTH;
-
 import android.annotation.SuppressLint;
 
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
-import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryAccelerationConstraint;
-import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityConstraint;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
@@ -28,7 +21,7 @@ import org.openftc.easyopencv.OpenCvCameraRotation;
 import java.util.ArrayList;
 
 @Autonomous
-public class RightCycle extends LinearOpMode {
+public class LeftCycle extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
@@ -38,73 +31,46 @@ public class RightCycle extends LinearOpMode {
 
         AprilTag at = new AprilTag();
 
-        int signal_pos = 1;
+        int signal_pos = 2;
 
-        Pose2d startPose = new Pose2d(32, -61.5, Math.toRadians(-90));
+        Pose2d startPose = new Pose2d(-40, -61.5, Math.toRadians(-90));
         drive.setPoseEstimate(startPose);
 
-        Pose2d highCone = new Pose2d(33, -9, Math.toRadians(0));
-
-        Pose2d correction = new Pose2d(1, 0, Math.toRadians(0));
+        Pose2d highCone = new Pose2d(-32, -8.3, Math.toRadians(0));
 
         TrajectorySequence startToHigh = drive.trajectorySequenceBuilder(startPose)
-                .setConstraints(getVel(1.5), getAcc(1.5))
                 .addDisplacementMarker(() -> lift.goTo(4000, 1))
                 .UNSTABLE_addTemporalMarkerOffset(0.5, arm::mid) // sets arm at an angle
                 // goes to high
-                .setTangent(Math.toRadians(80))
-                .splineToSplineHeading(highCone, Math.toRadians(105))
-                // lower lift
-                .addDisplacementMarker(() -> {
-                    lift.goToSavedPos();
-                    lift.lowerSavedPos();
-                })
+                .setTangent(Math.toRadians(63))
+                .splineToSplineHeading(highCone, Math.toRadians(70))
                 .build();
 
-        TrajectorySequence cycle = drive.trajectorySequenceBuilder(startToHigh.end().plus(correction))
-                // open claw and forward arm
-                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
-                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
-                // close claw when at the stack
-                .UNSTABLE_addDisplacementMarkerOffset(28, claw::close)
+        TrajectorySequence cycle = drive.trajectorySequenceBuilder(startToHigh.end())
                 // drives to stack
-                .setTangent(Math.toRadians(-35))
-                .splineToConstantHeading(new Pose2d(60, -15, Math.toRadians(0)).vec(), Math.toRadians(0))
-                // raises lift
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(4000, 1))
-                .waitSeconds(0.4)
-                // put arm mid WHILE going to high
-                .UNSTABLE_addTemporalMarkerOffset(0.1, arm::mid)
-                // goes to high
-                .setTangent(Math.toRadians(180))
-                .splineToConstantHeading(highCone.vec().plus(correction.vec()), Math.toRadians(180-35))
-                // lower lift
-                .addDisplacementMarker(() -> {
-                    lift.goToSavedPos();
-                    lift.lowerSavedPos();
-                })
+                .setTangent(Math.toRadians(-160))
+                .splineToSplineHeading(new Pose2d(-60, -15, Math.toRadians(0)), Math.toRadians(180))
                 .build();
 
+        // untested
         TrajectorySequence park1 = drive.trajectorySequenceBuilder(cycle.end())
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(500, 1))
-                .waitSeconds(0.3)
                 .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
-                .UNSTABLE_addTemporalMarkerOffset(0, arm::forward)
+                .waitSeconds(0.5)
                 .setTangent(Math.toRadians(-140))
-                .splineToConstantHeading(new Vector2d(15, -12), Math.toRadians(180))
+                .splineToConstantHeading(new Vector2d(11, -12), Math.toRadians(180))
                 .build();
 
         TrajectorySequence park2 = drive.trajectorySequenceBuilder(cycle.end())
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(500, 1))
-                .waitSeconds(0.3)
+                .addDisplacementMarker(() -> lift.goTo(500, 1))
+                .waitSeconds(0.2)
                 .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
                 .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
                 .lineTo(new Vector2d(36, -14))
                 .build();
 
         TrajectorySequence park3 = drive.trajectorySequenceBuilder(cycle.end())
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(500, 1))
-                .waitSeconds(0.3)
+                .addDisplacementMarker(() -> lift.goTo(500, 1))
+                .waitSeconds(0.2)
                 .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
                 .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
                 .setTangent(Math.toRadians(-35))
@@ -128,7 +94,6 @@ public class RightCycle extends LinearOpMode {
             drive.followTrajectorySequence(cycle);
             drive.followTrajectorySequence(cycle);
             drive.followTrajectorySequence(cycle);
-            drive.followTrajectorySequence(cycle);
 
             if (signal_pos == 1) {
                 drive.followTrajectorySequence(park1);
@@ -142,18 +107,10 @@ public class RightCycle extends LinearOpMode {
         sleep(10000);
     }
 
-    public static TrajectoryVelocityConstraint getVel(double v) {
-        return SampleMecanumDrive.getVelocityConstraint(MAX_VEL * v, MAX_ANG_VEL, TRACK_WIDTH);
-    }
-
-    public static TrajectoryAccelerationConstraint getAcc(double v) {
-        return SampleMecanumDrive.getAccelerationConstraint(MAX_ACCEL * v);
-    }
-
     class Lift {
         private DcMotor motor;
         private int lower = 100;
-        private int current_target = 700;
+        private int current_target = 650;
 
         public Lift(DcMotor lift_motor) {
             this.motor = lift_motor;
@@ -179,7 +136,7 @@ public class RightCycle extends LinearOpMode {
     class Claw {
         private Servo main;
         private double CLAW_OPEN = 1;
-        private double CLAW_CLOSE = 0.53;
+        private double CLAW_CLOSE = 0.5;
 
         public Claw(Servo claw) {
             this.main = claw;

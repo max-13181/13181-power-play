@@ -163,11 +163,19 @@ public class MixedMechanumDrive extends LinearOpMode {
 
       l = -gamepad2.left_stick_y;
 
-      if (l > 0) {
-        lift.setPower((l * 1/1.1) + 0.1);
-      } else {
-        lift.setPower((l * 1/.9) + 0.1);
+      if (lift.getCurrentPosition() > 4100) {
+        if (l > 0) {
+          l = 0;
+        }
       }
+
+      // code for holding the lift up passively
+//      if (l > 0) {
+//        lift.setPower((l * 1/1.1) + 0.1);
+//      } else {
+//        lift.setPower((l * 1/.9) + 0.1);
+//      }
+      lift.setPower(l);
 
       if (gamepad2.right_bumper) {
         claw_pos = 0.57; // close
@@ -176,9 +184,9 @@ public class MixedMechanumDrive extends LinearOpMode {
       }
       claw.setPosition(claw_pos);
 
-
       telemetry.addData("bot angle", Math.toDegrees(botHeading));
       telemetry.addData("lift power", lift.getPower());
+      telemetry.addData("lift pos", lift.getCurrentPosition());
       telemetry.addData("arm pos", arm.getPosition());
       telemetry.addData("arm_pos", arm_pos);
 //      telemetry.addData("x1", gamepad1.touchpad_finger_1_x);

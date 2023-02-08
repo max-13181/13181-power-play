@@ -6,61 +6,24 @@ import com.qualcomm.robotcore.eventloop.opmode.TeleOp;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 
-@Disabled
 @TeleOp
 public class LiftTest extends LinearOpMode {
     DcMotor lift;
-
-    public enum LiftState {
-        LIFT_START,
-        LIFT_DOWN,
-        LIFT_MID,
-        LIFT_UP,
-    };
-
-    LiftState liftState = LiftState.LIFT_START;
 
     @Override
     public void runOpMode() throws InterruptedException {
         lift = hardwareMap.dcMotor.get("lift");
         lift.setDirection(DcMotorSimple.Direction.REVERSE);
         lift.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
+        // turn on RUN_TO_POSITION
+        lift.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
 
         waitForStart();
 
-        lift.setTargetPosition(4000);
-        // turn on RUN_TO_POSITION
-        lift.setMode(DcMotor.RunMode.RUN_TO_POSITION);
-        lift.setPower(1);
-
-        while (opModeIsActive()) {}
-
-        sleep(2000);
-//
-//        lift.setTargetPosition(2000);
-//
-//        sleep(2000);
-
-//        while (opModeIsActive()) {}
-
-//        while (opModeIsActive()) {
-//            if (!lift.isBusy()) {
-//                break;
-//            }
-//        }
-//
-//        lift.setTargetPosition(2000);
-//
-//        while (opModeIsActive()) {
-//            if (!lift.isBusy()) {
-//                break;
-//            }
-//        }
-//
-//        // stop all motion
-//        lift.setPower(0);
-
-
+        while (opModeIsActive()) {
+            telemetry.addData("lift pos", lift.getCurrentPosition());
+            telemetry.update();
+        }
     }
 
     class Lift {

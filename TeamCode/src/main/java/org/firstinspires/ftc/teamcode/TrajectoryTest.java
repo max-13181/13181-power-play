@@ -23,11 +23,6 @@ public class TrajectoryTest extends LinearOpMode {
     TrajectoryVelocityConstraint defaultVelocity = SampleMecanumDrive.getVelocityConstraint(MAX_VEL, MAX_ANG_VEL, TRACK_WIDTH);
     TrajectoryAccelerationConstraint defaultAcceleration = SampleMecanumDrive.getAccelerationConstraint(MAX_ACCEL);
 
-    double boost_percent = 1.5;
-
-    TrajectoryVelocityConstraint boostedVelocity = SampleMecanumDrive.getVelocityConstraint(MAX_VEL * boost_percent, MAX_ANG_VEL, TRACK_WIDTH);
-    TrajectoryAccelerationConstraint boostedAcceleration = SampleMecanumDrive.getAccelerationConstraint(MAX_ACCEL * boost_percent);
-
     @Override
     public void runOpMode() throws InterruptedException {
         SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
@@ -38,23 +33,27 @@ public class TrajectoryTest extends LinearOpMode {
         Pose2d startPose = new Pose2d(32, -61.5, Math.toRadians(-90));
         drive.setPoseEstimate(startPose);
 
-        Pose2d highCone = new Pose2d(31.7, -8.5, Math.toRadians(0));
+        Pose2d highCone = new Pose2d(33, -9, Math.toRadians(0));
+
+        Pose2d correction = new Pose2d(-3, 0, Math.toRadians(0));
 
         TrajectorySequence startToHighMovementOnly = drive.trajectorySequenceBuilder(startPose)
-                .setConstraints(boostedVelocity, boostedAcceleration)
+//                .setConstraints(getVel(2), getAcc(1.5))
                 // goes to high
                 .setTangent(Math.toRadians(80))
                 .splineToSplineHeading(highCone, Math.toRadians(105))
                 .build();
 
         TrajectorySequence cycleTrajMovementOnly = drive.trajectorySequenceBuilder(startToHighMovementOnly.end())
-                .setConstraints(boostedVelocity, boostedAcceleration)
+//                .setConstraints(getVel(0.75), getAcc(0.75))
                 // drives to stack
                 .setTangent(Math.toRadians(-35))
-                .splineToSplineHeading(new Pose2d(62, -15, Math.toRadians(0)), Math.toRadians(0))
+                .splineToConstantHeading(new Pose2d(60, -15, Math.toRadians(0)).vec(), Math.toRadians(0))
+                .waitSeconds(0.1)
+//                .setConstraints(getVel(1), getAcc(1))
                 // goes to high
                 .setTangent(Math.toRadians(180))
-                .splineToSplineHeading(highCone, Math.toRadians(180-35))
+                .splineToConstantHeading(highCone.vec(), Math.toRadians(180-35))
                 .build();
 
         claw.close();
@@ -66,11 +65,26 @@ public class TrajectoryTest extends LinearOpMode {
             drive.followTrajectorySequence(startToHighMovementOnly);
             drive.followTrajectorySequence(cycleTrajMovementOnly);
             drive.followTrajectorySequence(cycleTrajMovementOnly);
+            drive.setPoseEstimate(drive.getPoseEstimate().plus(correction));
             drive.followTrajectorySequence(cycleTrajMovementOnly);
+            drive.setPoseEstimate(drive.getPoseEstimate().plus(correction));
+            drive.followTrajectorySequence(cycleTrajMovementOnly);
+            drive.setPoseEstimate(drive.getPoseEstimate().plus(correction));
             drive.followTrajectorySequence(cycleTrajMovementOnly);
         }
 
+        telemetry.addLine("done");
+        telemetry.update();
+
         sleep(10000);
+    }
+
+    public static TrajectoryVelocityConstraint getVel(double v) {
+        return SampleMecanumDrive.getVelocityConstraint(MAX_VEL * v, MAX_ANG_VEL, TRACK_WIDTH);
+    }
+
+    public static TrajectoryAccelerationConstraint getAcc(double v) {
+        return SampleMecanumDrive.getAccelerationConstraint(MAX_ACCEL * v);
     }
 
     class Lift {
