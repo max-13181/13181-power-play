@@ -21,7 +21,7 @@ public class DriveConstants {
      * These are motor constants that should be listed online for your motors.
      */
     // https://www.gobilda.com/5203-series-yellow-jacket-planetary-gear-motor-19-2-1-ratio-24mm-length-8mm-rex-shaft-312-rpm-3-3-5v-encoder/
-    public static final double TICKS_PER_REV = 537.7; // guaranteed correct
+    public static final double TICKS_PER_REV = 8192; // guaranteed correct
     public static final double MAX_RPM = 312; // guaranteed correct
 
     /*
@@ -33,7 +33,8 @@ public class DriveConstants {
      * from DriveVelocityPIDTuner.
      */
     public static final boolean RUN_USING_ENCODER = false;
-    public static PIDFCoefficients MOTOR_VELO_PID = new PIDFCoefficients(0, 0, 0, 12.875979573559176);
+    public static PIDFCoefficients MOTOR_VELO_PID = new PIDFCoefficients(0, 0, 0, 0);
+    // f = 12.875979573559176
 
     /*
      * These are physical constants that can be determined from your robot (including the track
@@ -43,19 +44,9 @@ public class DriveConstants {
      * angular distances although most angular parameters are wrapped in Math.toRadians() for
      * convenience. Make sure to exclude any gear ratio included in MOTOR_CONFIG from GEAR_RATIO.
      */
-    public static double WHEEL_RADIUS = 3.77953/2; // in // guaranteed correct
-    public static double GEAR_RATIO = 0.99463170082; // guaranteed correct
-    public static double TRACK_WIDTH = 14.96; // in // 180 degree tuning 15.07 // 90 degree 15.86
-
-    /*
-     * These are the feedforward parameters used to model the drive motor behavior. If you are using
-     * the built-in velocity PID, *these values are fine as is*. However, if you do not have drive
-     * motor encoders or have elected not to use them for velocity control, these values should be
-     * empirically tuned.
-     */
-    public static double kV = 0.01719604544764269;
-    public static double kA = 0.0027;
-    public static double kStatic = 0.003;
+    public static double WHEEL_RADIUS = 1; // in // guaranteed correct
+    public static double GEAR_RATIO = 1; // guaranteed correct
+    public static double TRACK_WIDTH = 14.26; // in // 180 degree tuning 15.07 // 90 degree 15.86
 
     /*
      * These values are used to generate the trajectories for you robot. To ensure proper operation,
@@ -68,6 +59,16 @@ public class DriveConstants {
     public static double MAX_ACCEL = 30; // default
     public static double MAX_ANG_VEL = 5.184444427490234; // prev 1.0471975511965976 or 60 degrees
     public static double MAX_ANG_ACCEL = Math.toRadians(60); // default
+
+    /*
+     * These are the feedforward parameters used to model the drive motor behavior. If you are using
+     * the built-in velocity PID, *these values are fine as is*. However, if you do not have drive
+     * motor encoders or have elected not to use them for velocity control, these values should be
+     * empirically tuned.
+     */
+    public static double kV = 0.0177;
+    public static double kA = 0.0024; // 0.002
+    public static double kStatic = 0.015; // 0.01
 
 
     public static double encoderTicksToInches(double ticks) {

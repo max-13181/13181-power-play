@@ -17,11 +17,11 @@ public class MixedMechanumDrive extends LinearOpMode {
   @Override
   public void runOpMode() {
     Gamepad.RumbleEffect customRumbleEffect = new Gamepad.RumbleEffect.Builder()
-            .addStep(1.0, 1.0, 500)  //  Rumble for 500 mSec
-            .addStep(0.0, 0.0, 500)  //  Pause for 500 mSec
-            .addStep(1.0, 1.0, 500)  //  Rumble for 500 mSec
-            .addStep(0.0, 0.0, 500)  //  Pause for 500 mSec
-            .addStep(1.0, 1.0, 500)  //  Rumble for 500 mSec
+            .addStep(0.5, 0.5, 200)  //  Rumble for 500 mSec
+            .addStep(0.0, 0.0, 200)  //  Pause for 500 mSec
+            .addStep(0.5, 0.5, 200)  //  Rumble for 500 mSec
+            .addStep(0.0, 0.0, 200)  //  Pause for 500 mSec
+            .addStep(0.5, 0.5, 200)  //  Rumble for 500 mSec
             .build();
     ElapsedTime runtime = new ElapsedTime();
 
@@ -163,19 +163,12 @@ public class MixedMechanumDrive extends LinearOpMode {
 
       l = -gamepad2.left_stick_y;
 
-      if (lift.getCurrentPosition() > 4100) {
-        if (l > 0) {
-          l = 0;
-        }
-      }
-
       // code for holding the lift up passively
-//      if (l > 0) {
-//        lift.setPower((l * 1/1.1) + 0.1);
-//      } else {
-//        lift.setPower((l * 1/.9) + 0.1);
-//      }
-      lift.setPower(l);
+      if (l > 0) {
+        lift.setPower((l * 1/1.1) + 0.1);
+      } else {
+        lift.setPower((l * 1/.9) + 0.1);
+      }
 
       if (gamepad2.right_bumper) {
         claw_pos = 0.57; // close

@@ -15,26 +15,26 @@ import org.firstinspires.ftc.teamcode.roadrunner.SampleMecanumDrive;
  * exercise is to ascertain whether the localizer has been configured properly (note: the pure
  * encoder localizer heading may be significantly off if the track width has not been tuned).
  */
-@Disabled
 @TeleOp(group = "drive")
 public class LocalizationTest extends LinearOpMode {
     @Override
     public void runOpMode() throws InterruptedException {
         SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
 
+        drive.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.FLOAT);
+
         drive.setMode(DcMotor.RunMode.RUN_WITHOUT_ENCODER);
 
         waitForStart();
 
         while (!isStopRequested()) {
-            drive.setWeightedDrivePower(
-                    new Pose2d(
-                            -gamepad1.left_stick_y,
-                            -gamepad1.left_stick_x,
-                            -gamepad1.right_stick_x
-                    )
-            );
-
+//            drive.setWeightedDrivePower(
+//                    new Pose2d(
+//                            -gamepad1.left_stick_y,
+//                            -gamepad1.left_stick_x,
+//                            -gamepad1.right_stick_x
+//                    )
+//            );
             drive.update();
 
             Pose2d poseEstimate = drive.getPoseEstimate();
