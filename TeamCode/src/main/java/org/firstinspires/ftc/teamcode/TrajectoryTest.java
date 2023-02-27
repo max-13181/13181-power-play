@@ -6,6 +6,7 @@ import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.MAX_VEL;
 import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.TRACK_WIDTH;
 
 import com.acmerobotics.roadrunner.geometry.Pose2d;
+import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryAccelerationConstraint;
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityConstraint;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
@@ -30,47 +31,26 @@ public class TrajectoryTest extends LinearOpMode {
         Arm arm = new Arm(hardwareMap.servo.get("arm"));
         Lift lift = new Lift(hardwareMap.dcMotor.get("lift"));
 
-        Pose2d startPose = new Pose2d(32, -61.5, Math.toRadians(-90));
+        Pose2d startPose = new Pose2d(24, -12, 0);
+
         drive.setPoseEstimate(startPose);
 
-        Pose2d highCone = new Pose2d(33, -9, Math.toRadians(0));
-
-        Pose2d correction = new Pose2d(-3, 0, Math.toRadians(0));
-
-        TrajectorySequence startToHighMovementOnly = drive.trajectorySequenceBuilder(startPose)
-//                .setConstraints(getVel(2), getAcc(1.5))
-                // goes to high
-                .setTangent(Math.toRadians(80))
-                .splineToSplineHeading(highCone, Math.toRadians(105))
-                .build();
-
-        TrajectorySequence cycleTrajMovementOnly = drive.trajectorySequenceBuilder(startToHighMovementOnly.end())
-//                .setConstraints(getVel(0.75), getAcc(0.75))
+        TrajectorySequence cycle = drive.trajectorySequenceBuilder(startPose)
                 // drives to stack
-                .setTangent(Math.toRadians(-35))
-                .splineToConstantHeading(new Pose2d(60, -15, Math.toRadians(0)).vec(), Math.toRadians(0))
-                .waitSeconds(0.1)
-//                .setConstraints(getVel(1), getAcc(1))
-                // goes to high
-                .setTangent(Math.toRadians(180))
-                .splineToConstantHeading(highCone.vec(), Math.toRadians(180-35))
+                .setTangent(Math.toRadians(-20))
+                .lineToLinearHeading(new Pose2d(58, -12, Math.toRadians(0)))
+                .waitSeconds(2)
+                .lineToLinearHeading(startPose)
                 .build();
-
-        claw.close();
-        arm.forward();
 
         waitForStart();
 
         if (!isStopRequested()) {
-            drive.followTrajectorySequence(startToHighMovementOnly);
-            drive.followTrajectorySequence(cycleTrajMovementOnly);
-            drive.followTrajectorySequence(cycleTrajMovementOnly);
-            drive.setPoseEstimate(drive.getPoseEstimate().plus(correction));
-            drive.followTrajectorySequence(cycleTrajMovementOnly);
-            drive.setPoseEstimate(drive.getPoseEstimate().plus(correction));
-            drive.followTrajectorySequence(cycleTrajMovementOnly);
-            drive.setPoseEstimate(drive.getPoseEstimate().plus(correction));
-            drive.followTrajectorySequence(cycleTrajMovementOnly);
+            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(cycle);
         }
 
         telemetry.addLine("done");
