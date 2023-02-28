@@ -5,6 +5,7 @@ import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.MAX_ANG_V
 import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.MAX_VEL;
 import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.TRACK_WIDTH;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryAccelerationConstraint;
@@ -18,11 +19,17 @@ import com.qualcomm.robotcore.hardware.Servo;
 import org.firstinspires.ftc.teamcode.roadrunner.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequence;
 
+@Config
 @Autonomous(group="alpha")
 public class TrajectoryTest extends LinearOpMode {
 
     TrajectoryVelocityConstraint defaultVelocity = SampleMecanumDrive.getVelocityConstraint(MAX_VEL, MAX_ANG_VEL, TRACK_WIDTH);
     TrajectoryAccelerationConstraint defaultAcceleration = SampleMecanumDrive.getAccelerationConstraint(MAX_ACCEL);
+
+    public static double boost = 1.25;
+
+    TrajectoryVelocityConstraint boostVel = SampleMecanumDrive.getVelocityConstraint(MAX_VEL*boost, MAX_ANG_VEL*boost, TRACK_WIDTH);
+    TrajectoryAccelerationConstraint boostAcc = SampleMecanumDrive.getAccelerationConstraint(MAX_ACCEL*boost);
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -31,26 +38,43 @@ public class TrajectoryTest extends LinearOpMode {
         Arm arm = new Arm(hardwareMap.servo.get("arm"));
         Lift lift = new Lift(hardwareMap.dcMotor.get("lift"));
 
-        Pose2d startPose = new Pose2d(24, -12, 0);
+        Pose2d startPose = new Pose2d(31, -63.5 + 4 + 3.0/8.0, Math.toRadians(-90));
+
+        Pose2d highCone = new Pose2d(31, -11, Math.toRadians(0));
 
         drive.setPoseEstimate(startPose);
 
-        TrajectorySequence cycle = drive.trajectorySequenceBuilder(startPose)
-                // drives to stack
-                .setTangent(Math.toRadians(-20))
-                .lineToLinearHeading(new Pose2d(58, -12, Math.toRadians(0)))
-                .waitSeconds(2)
-                .lineToLinearHeading(startPose)
+        TrajectorySequence startToHigh = drive.trajectorySequenceBuilder(startPose)
+                .setConstraints(boostVel, boostAcc)
+
+                .UNSTABLE_addTemporalMarkerOffset(0.8, () -> lift.goTo(3675, 1))
+
+                .setTangent(Math.toRadians(75))
+                .splineToSplineHeading(highCone, Math.toRadians(110))
                 .build();
+
+        TrajectorySequence cycle = drive.trajectorySequenceBuilder(startToHigh.end())
+                .setConstraints(boostVel, boostAcc)
+
+                .setTangent(Math.toRadians(-10))
+                .splineToConstantHeading(new Vector2d(60, -12), Math.toRadians(0))
+
+                .setTangent(Math.toRadians(180))
+                .splineToConstantHeading(highCone.vec(), Math.toRadians(180+10))
+
+                .build();
+
+        arm.forward();
 
         waitForStart();
 
         if (!isStopRequested()) {
-            drive.followTrajectorySequence(cycle);
-            drive.followTrajectorySequence(cycle);
-            drive.followTrajectorySequence(cycle);
-            drive.followTrajectorySequence(cycle);
-            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(startToHigh);
+//            drive.followTrajectorySequence(cycle);
+//            drive.followTrajectorySequence(cycle);
+//            drive.followTrajectorySequence(cycle);
+//            drive.followTrajectorySequence(cycle);
+//            drive.followTrajectorySequence(cycle);
         }
 
         telemetry.addLine("done");
@@ -115,7 +139,7 @@ public class TrajectoryTest extends LinearOpMode {
         private Servo main;
         private double ARM_FORWARD = 0;
         private double ARM_BACK = 1;
-        private double ARM_MID = 0.45;
+        private double ARM_MID = 0.43;
 
         public Arm(Servo arm) {
             this.main = arm;

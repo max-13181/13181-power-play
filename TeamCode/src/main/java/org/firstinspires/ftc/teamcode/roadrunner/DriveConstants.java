@@ -46,7 +46,7 @@ public class DriveConstants {
      */
     public static double WHEEL_RADIUS = 1; // in // guaranteed correct
     public static double GEAR_RATIO = 1; // guaranteed correct
-    public static double TRACK_WIDTH = 14.26; // in // 180 degree tuning 15.07 // 90 degree 15.86
+    public static double TRACK_WIDTH = 12.3; // in // 180 degree tuning 15.07 // 90 degree 15.86
 
     /*
      * These values are used to generate the trajectories for you robot. To ensure proper operation,
@@ -57,7 +57,7 @@ public class DriveConstants {
      */
     public static double MAX_VEL = 40.9058208784751 * 0.9;
     public static double MAX_ACCEL = 30; // default
-    public static double MAX_ANG_VEL = 5.184444427490234; // prev 1.0471975511965976 or 60 degrees
+    public static double MAX_ANG_VEL = 4.15; // recommended, not max value
     public static double MAX_ANG_ACCEL = Math.toRadians(60); // default
 
     /*
@@ -66,9 +66,9 @@ public class DriveConstants {
      * motor encoders or have elected not to use them for velocity control, these values should be
      * empirically tuned.
      */
-    public static double kV = 0.0177;
-    public static double kA = 0.0024; // 0.002
-    public static double kStatic = 0.015; // 0.01
+    public static double kV = 0.0175;
+    public static double kA = 0.003;
+    public static double kStatic = 0.01;
 
 
     public static double encoderTicksToInches(double ticks) {

@@ -15,7 +15,7 @@ public class MeepMeepTesting {
 
         DefaultBotBuilder drive = new DefaultBotBuilder(meepMeep);
         drive.setConstraints(60, 60, Math.toRadians(180), Math.toRadians(180), 15);
-        drive.setDimensions(15 + 3.0/8.0, 15.5);
+        drive.setDimensions(14, 14.25);
 
         // -90 down
         // 90 up
@@ -25,11 +25,15 @@ public class MeepMeepTesting {
         // y is up/down
         // x is left/right
 
+        Pose2d startPose = new Pose2d(31, -63.5 + 4 + 3.0/8.0, Math.toRadians(-90));
+
         RoadRunnerBotEntity path = drive.followTrajectorySequence(traj ->
-                traj.trajectorySequenceBuilder(new Pose2d(23, -12, 0))
-                        // drives to stack
-                        .setTangent(Math.toRadians(-20))
-                        .lineToLinearHeading(new Pose2d(58, -12, Math.toRadians(0)))
+                traj.trajectorySequenceBuilder(startPose)
+                        .waitSeconds(1)
+                        .setTangent(Math.toRadians(180))
+                        .splineToConstantHeading(new Vector2d(13, -45), Math.toRadians(90))
+                        .splineToSplineHeading(new Pose2d(31.3, -11.1, Math.toRadians(0)), Math.toRadians(0))
+                        .waitSeconds(1)
                         .build()
         );
 
