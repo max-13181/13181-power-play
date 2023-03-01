@@ -7,19 +7,18 @@ import static org.firstinspires.ftc.teamcode.roadrunner.DriveConstants.TRACK_WID
 
 import android.annotation.SuppressLint;
 
+import com.acmerobotics.dashboard.config.Config;
 import com.acmerobotics.roadrunner.geometry.Pose2d;
 import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryAccelerationConstraint;
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityConstraint;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
-import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
-import org.firstinspires.ftc.teamcode.AprilTagDetectionPipeline;
 import org.firstinspires.ftc.teamcode.roadrunner.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequence;
 import org.openftc.apriltag.AprilTagDetection;
@@ -29,9 +28,18 @@ import org.openftc.easyopencv.OpenCvCameraRotation;
 
 import java.util.ArrayList;
 
-@Disabled
-@Autonomous
+@Config
+@Autonomous(group="alpha")
 public class RightCycle extends LinearOpMode {
+
+    public static int HIGH_HEIGHT = 3700;
+    public static int MID_HEIGHT = 1650;
+    public static int STACK_START = 625;
+    public static int STACK_MID = 1000;
+    public static int STACK_INC = 140;
+
+    public static double DROP_DELAY = 1.5;
+
     @Override
     public void runOpMode() throws InterruptedException {
         SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
@@ -41,77 +49,86 @@ public class RightCycle extends LinearOpMode {
 
         AprilTag at = new AprilTag();
 
-        int signal_pos = 1;
+        int signal_pos = 0;
 
-        Pose2d startPose = new Pose2d(32, -61.5, Math.toRadians(-90));
+        Pose2d startPose = new Pose2d(31+5.0/8.0, -63.5 + 4 + 3.0/8.0, Math.toRadians(-90));
+        Vector2d stack = new Vector2d(59.3, -14);
+
+        Pose2d highCone =               new Pose2d(31, -11.1, Math.toRadians(0));
+        Vector2d highConeAfterStack = new Vector2d(31.7, -12.2);
+
         drive.setPoseEstimate(startPose);
 
-        Pose2d highCone = new Pose2d(33, -9, Math.toRadians(0));
-
-        Pose2d correction = new Pose2d(1, 0, Math.toRadians(0));
-
-        TrajectorySequence startToHigh = drive.trajectorySequenceBuilder(startPose)
-                .setConstraints(getVel(1.5), getAcc(1.5))
-                .addDisplacementMarker(() -> lift.goTo(4000, 1))
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::mid) // sets arm at an angle
-                // goes to high
-                .setTangent(Math.toRadians(80))
-                .splineToSplineHeading(highCone, Math.toRadians(105))
-                // lower lift
-                .addDisplacementMarker(() -> {
+        TrajectorySequence toHigh = drive.trajectorySequenceBuilder(startPose)
+                // bumps into the high pole then goes up and down again
+                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> {
                     lift.goToSavedPos();
                     lift.lowerSavedPos();
                 })
+
+                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> lift.goTo(MID_HEIGHT, 1))
+                .UNSTABLE_addTemporalMarkerOffset(2.5, arm::mid) // sets arm at an angle
+
+                .setTangent(Math.toRadians(75))
+                .splineToSplineHeading(highCone, Math.toRadians(106))
+
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(HIGH_HEIGHT, 1))
+                .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
+                .waitSeconds(DROP_DELAY)
                 .build();
 
-        TrajectorySequence cycle = drive.trajectorySequenceBuilder(startToHigh.end().plus(correction))
-                // open claw and forward arm
-                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
-                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
-                // close claw when at the stack
-                .UNSTABLE_addDisplacementMarkerOffset(28, claw::close)
-                // drives to stack
-                .setTangent(Math.toRadians(-35))
-                .splineToConstantHeading(new Pose2d(60, -15, Math.toRadians(0)).vec(), Math.toRadians(0))
-                // raises lift
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(4000, 1))
-                .waitSeconds(0.4)
-                // put arm mid WHILE going to high
-                .UNSTABLE_addTemporalMarkerOffset(0.1, arm::mid)
-                // goes to high
-                .setTangent(Math.toRadians(180))
-                .splineToConstantHeading(highCone.vec().plus(correction.vec()), Math.toRadians(180-35))
-                // lower lift
-                .addDisplacementMarker(() -> {
+        TrajectorySequence cycle = drive.trajectorySequenceBuilder(toHigh.end())
+                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> {
                     lift.goToSavedPos();
                     lift.lowerSavedPos();
                 })
+
+                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
+                .UNSTABLE_addTemporalMarkerOffset(0.2, claw::partial_open)
+
+                // drive to stack
+                .setTangent(Math.toRadians(-18))
+                .splineToConstantHeading(stack, Math.toRadians(0))
+
+                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> claw.set(0.51))
+                .waitSeconds(0.6)
+
+                // raises lift
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(STACK_MID, 1))
+                .waitSeconds(0.3)
+
+                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::mid)
+                .UNSTABLE_addTemporalMarkerOffset(0.3, () -> lift.goTo(MID_HEIGHT, 1))
+
+                .UNSTABLE_addTemporalMarkerOffset(1.5, () -> lift.goTo(HIGH_HEIGHT, 1))
+                .setTangent(Math.toRadians(180))
+                .splineToConstantHeading(highConeAfterStack, Math.toRadians(180+10))
+
+                .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
+                .waitSeconds(DROP_DELAY)
                 .build();
 
         TrajectorySequence park1 = drive.trajectorySequenceBuilder(cycle.end())
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(500, 1))
-                .waitSeconds(0.3)
-                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
-                .UNSTABLE_addTemporalMarkerOffset(0, arm::forward)
+                .waitSeconds(0.2)
+                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
                 .setTangent(Math.toRadians(-140))
-                .splineToConstantHeading(new Vector2d(15, -12), Math.toRadians(180))
+                .splineToConstantHeading(new Vector2d(10, -13), Math.toRadians(180))
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
                 .build();
 
         TrajectorySequence park2 = drive.trajectorySequenceBuilder(cycle.end())
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(500, 1))
-                .waitSeconds(0.3)
-                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
-                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
+                .waitSeconds(0.2)
+                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
                 .lineTo(new Vector2d(36, -14))
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
                 .build();
 
         TrajectorySequence park3 = drive.trajectorySequenceBuilder(cycle.end())
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(500, 1))
-                .waitSeconds(0.3)
-                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
-                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
-                .setTangent(Math.toRadians(-35))
-                .splineToConstantHeading(new Vector2d(59, -14), Math.toRadians(0))
+                .waitSeconds(0.2)
+                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
+                .setTangent(Math.toRadians(-18))
+                .splineToConstantHeading(stack.plus(new Vector2d(-3,0)), Math.toRadians(0))
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
                 .build();
 
         claw.close();
@@ -126,9 +143,7 @@ public class RightCycle extends LinearOpMode {
         }
 
         if (!isStopRequested()) {
-            drive.followTrajectorySequence(startToHigh);
-            drive.followTrajectorySequence(cycle);
-            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(toHigh);
             drive.followTrajectorySequence(cycle);
             drive.followTrajectorySequence(cycle);
             drive.followTrajectorySequence(cycle);
@@ -141,6 +156,9 @@ public class RightCycle extends LinearOpMode {
                 drive.followTrajectorySequence(park3);
             }
         }
+
+        telemetry.addLine("done");
+        telemetry.update();
 
         sleep(10000);
     }
@@ -155,12 +173,14 @@ public class RightCycle extends LinearOpMode {
 
     class Lift {
         private DcMotor motor;
-        private int lower = 100;
-        private int current_target = 700;
+        private int lower = STACK_INC;
+        private int current_target = STACK_START;
 
         public Lift(DcMotor lift_motor) {
             this.motor = lift_motor;
             this.motor.setDirection(DcMotorSimple.Direction.REVERSE);
+            this.motor.setMode(DcMotor.RunMode.STOP_AND_RESET_ENCODER);
+            this.motor.setMode(DcMotor.RunMode.RUN_USING_ENCODER);
             this.motor.setZeroPowerBehavior(DcMotor.ZeroPowerBehavior.BRAKE);
         }
 
@@ -182,7 +202,8 @@ public class RightCycle extends LinearOpMode {
     class Claw {
         private Servo main;
         private double CLAW_OPEN = 1;
-        private double CLAW_CLOSE = 0.53;
+        private double CLAW_PARTIAL = 0.75;
+        private double CLAW_CLOSE = 0.5;
 
         public Claw(Servo claw) {
             this.main = claw;
@@ -192,8 +213,16 @@ public class RightCycle extends LinearOpMode {
             this.main.setPosition(CLAW_OPEN);
         }
 
+        public void partial_open() {
+            this.main.setPosition(CLAW_PARTIAL);
+        }
+
         public void close() {
             this.main.setPosition(CLAW_CLOSE);
+        }
+
+        public void set(double pos) {
+            this.main.setPosition(pos);
         }
     }
 
@@ -201,7 +230,7 @@ public class RightCycle extends LinearOpMode {
         private Servo main;
         private double ARM_FORWARD = 0;
         private double ARM_BACK = 1;
-        private double ARM_MID = 0.45;
+        private double ARM_MID = 0.44;
 
         public Arm(Servo arm) {
             this.main = arm;

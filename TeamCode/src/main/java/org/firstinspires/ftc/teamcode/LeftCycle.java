@@ -13,12 +13,14 @@ import com.acmerobotics.roadrunner.geometry.Vector2d;
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryAccelerationConstraint;
 import com.acmerobotics.roadrunner.trajectory.constraints.TrajectoryVelocityConstraint;
 import com.qualcomm.robotcore.eventloop.opmode.Autonomous;
+import com.qualcomm.robotcore.eventloop.opmode.Disabled;
 import com.qualcomm.robotcore.eventloop.opmode.LinearOpMode;
 import com.qualcomm.robotcore.hardware.DcMotor;
 import com.qualcomm.robotcore.hardware.DcMotorSimple;
 import com.qualcomm.robotcore.hardware.Servo;
 
 import org.firstinspires.ftc.robotcore.external.hardware.camera.WebcamName;
+import org.firstinspires.ftc.teamcode.AprilTagDetectionPipeline;
 import org.firstinspires.ftc.teamcode.roadrunner.SampleMecanumDrive;
 import org.firstinspires.ftc.teamcode.roadrunner.trajectorysequence.TrajectorySequence;
 import org.openftc.apriltag.AprilTagDetection;
@@ -30,15 +32,26 @@ import java.util.ArrayList;
 
 @Config
 @Autonomous(group="alpha")
-public class AFastRightCycle extends LinearOpMode {
+public class LeftCycle extends LinearOpMode {
 
-    public static int HIGH_HEIGHT = 3700;
-    public static int MID_HEIGHT = 1650;
-    public static int STACK_START = 625;
-    public static int STACK_MID = 1000;
-    public static int STACK_INC = 140;
+    public static int HIGH_HEIGHT = 3800;
+    public static int MID_HEIGHT = 2000 ;
 
-    public static double DROP_DELAY = 1.5;
+    public static double ARM_ANGLE = 0.23;
+
+    public static double START_TAN = 60;
+
+    public static double MID_X = -35;
+    public static double MID_Y = -35;
+    public static double MID_TAN = 112;
+
+    public static double HIGH_X = -26.5;
+    public static double HIGH_Y = -12.4;
+    public static double HIGH_TAN = 20;
+
+    final public static int STACK_START = 625;
+    final public static int STACK_MID = 1000;
+    final public static int STACK_INC = 140;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -51,64 +64,36 @@ public class AFastRightCycle extends LinearOpMode {
 
         int signal_pos = 0;
 
-        Pose2d startPose = new Pose2d(31, -63.5 + 4 + 3.0/8.0, Math.toRadians(-90));
-        Vector2d stack = new Vector2d(59.3, -14);
+        Pose2d startPose = new Pose2d(-39, -63.5 + 3.6, Math.toRadians(-90));
+        Vector2d stack = new Vector2d(-59.3, -14);
 
-        Pose2d highCone =               new Pose2d(31, -11.1, Math.toRadians(0));
-        Vector2d highConeAfterStack = new Vector2d(31.5, -12);
+        Pose2d midPoint = new Pose2d(MID_X, MID_Y, Math.toRadians(-90));
+
+        Pose2d highCone = new Pose2d(HIGH_X, HIGH_Y, Math.toRadians(0));
+        Vector2d highConeAfterStack = new Vector2d(31.7, -12.2);
 
         drive.setPoseEstimate(startPose);
 
         TrajectorySequence toHigh = drive.trajectorySequenceBuilder(startPose)
-                // bumps into the high pole then goes up and down again
-                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> {
-                    lift.goToSavedPos();
-                    lift.lowerSavedPos();
-                })
-
                 .UNSTABLE_addTemporalMarkerOffset(0.2, () -> lift.goTo(MID_HEIGHT, 1))
-                .UNSTABLE_addTemporalMarkerOffset(2.5, arm::mid) // sets arm at an angle
+                .UNSTABLE_addTemporalMarkerOffset(3, arm::mid) // sets arm at an angle
 
-                .setTangent(Math.toRadians(75))
-                .splineToSplineHeading(highCone, Math.toRadians(110))
+                .setTangent(Math.toRadians(START_TAN))
+                .splineToConstantHeading(midPoint.vec(), Math.toRadians(MID_TAN))
+                .splineToSplineHeading(highCone, Math.toRadians(HIGH_TAN))
 
                 .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(HIGH_HEIGHT, 1))
-                .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
-                .waitSeconds(DROP_DELAY)
+                .UNSTABLE_addTemporalMarkerOffset(5, claw::open)
+                .waitSeconds(5)
                 .build();
 
         TrajectorySequence cycle = drive.trajectorySequenceBuilder(toHigh.end())
-                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> {
-                    lift.goToSavedPos();
-                    lift.lowerSavedPos();
-                })
-
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
-                .UNSTABLE_addTemporalMarkerOffset(0.2, claw::partial_open)
-
-                // drive to stack
-                .setTangent(Math.toRadians(-18))
-                .splineToConstantHeading(stack, Math.toRadians(0))
-
-                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> claw.set(0.51))
-                .waitSeconds(0.6)
-
-                // raises lift
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(STACK_MID, 1))
-                .waitSeconds(0.3)
-
-                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::mid)
-                .UNSTABLE_addTemporalMarkerOffset(0.3, () -> lift.goTo(MID_HEIGHT, 1))
-
-                .UNSTABLE_addTemporalMarkerOffset(2, () -> lift.goTo(HIGH_HEIGHT, 1))
-                .setTangent(Math.toRadians(180))
-                .splineToConstantHeading(highConeAfterStack, Math.toRadians(180+10))
-
-                .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
-                .waitSeconds(DROP_DELAY)
+                .setTangent(Math.toRadians(198))
+                .splineToConstantHeading(stack, Math.toRadians(180))
                 .build();
 
         TrajectorySequence park1 = drive.trajectorySequenceBuilder(cycle.end())
+                .waitSeconds(0.2)
                 .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
                 .setTangent(Math.toRadians(-140))
                 .splineToConstantHeading(new Vector2d(10, -13), Math.toRadians(180))
@@ -116,12 +101,14 @@ public class AFastRightCycle extends LinearOpMode {
                 .build();
 
         TrajectorySequence park2 = drive.trajectorySequenceBuilder(cycle.end())
+                .waitSeconds(0.2)
                 .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
                 .lineTo(new Vector2d(36, -14))
                 .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
                 .build();
 
         TrajectorySequence park3 = drive.trajectorySequenceBuilder(cycle.end())
+                .waitSeconds(0.2)
                 .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
                 .setTangent(Math.toRadians(-18))
                 .splineToConstantHeading(stack.plus(new Vector2d(-3,0)), Math.toRadians(0))
@@ -132,7 +119,7 @@ public class AFastRightCycle extends LinearOpMode {
         arm.forward();
 
         while (!isStarted() && !isStopRequested()) {
-            at.detect();
+            //at.detect();
         }
 
         if (at.tagOfInterest != null) {
@@ -141,9 +128,7 @@ public class AFastRightCycle extends LinearOpMode {
 
         if (!isStopRequested()) {
             drive.followTrajectorySequence(toHigh);
-            drive.followTrajectorySequence(cycle);
-            drive.followTrajectorySequence(cycle);
-            drive.followTrajectorySequence(cycle);
+            //drive.followTrajectorySequence(cycle);
 
             if (signal_pos == 1) {
                 drive.followTrajectorySequence(park1);
@@ -227,7 +212,7 @@ public class AFastRightCycle extends LinearOpMode {
         private Servo main;
         private double ARM_FORWARD = 0;
         private double ARM_BACK = 1;
-        private double ARM_MID = 0.44;
+        private double ARM_MID = ARM_ANGLE;
 
         public Arm(Servo arm) {
             this.main = arm;

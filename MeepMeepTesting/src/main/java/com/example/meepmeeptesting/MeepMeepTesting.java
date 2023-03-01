@@ -15,7 +15,8 @@ public class MeepMeepTesting {
 
         DefaultBotBuilder drive = new DefaultBotBuilder(meepMeep);
         drive.setConstraints(60, 60, Math.toRadians(180), Math.toRadians(180), 15);
-        drive.setDimensions(14, 14.25);
+        drive.setDimensions(14, 14.25); // without boots
+        drive.setDimensions(15 + 3.0/8.0, 15.25);
 
         // -90 down
         // 90 up
@@ -25,15 +26,23 @@ public class MeepMeepTesting {
         // y is up/down
         // x is left/right
 
-        Pose2d startPose = new Pose2d(31, -63.5 + 4 + 3.0/8.0, Math.toRadians(-90));
+        Pose2d startPose = new Pose2d(-39, -63.5 + 3.6, Math.toRadians(-90));
+
+        Pose2d midPoint = new Pose2d(-35, -35, Math.toRadians(-90));
+
+        Pose2d highCone = new Pose2d(-31, -11.1, Math.toRadians(0));
+
+        Vector2d stack = new Vector2d(-59.3, -14);
 
         RoadRunnerBotEntity path = drive.followTrajectorySequence(traj ->
                 traj.trajectorySequenceBuilder(startPose)
                         .waitSeconds(1)
-                        .setTangent(Math.toRadians(180))
-                        .splineToConstantHeading(new Vector2d(13, -45), Math.toRadians(90))
-                        .splineToSplineHeading(new Pose2d(31.3, -11.1, Math.toRadians(0)), Math.toRadians(0))
-                        .waitSeconds(1)
+                        .setTangent(Math.toRadians(50))
+                        .splineToConstantHeading(midPoint.vec(), Math.toRadians(100))
+                        .splineToSplineHeading(highCone, Math.toRadians(70))
+                        //.waitSeconds(1)
+                        //.setTangent(Math.toRadians(198))
+                        //.splineToConstantHeading(stack, Math.toRadians(180))
                         .build()
         );
 
