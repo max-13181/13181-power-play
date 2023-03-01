@@ -38,20 +38,24 @@ public class LeftCycle extends LinearOpMode {
     public static int MID_HEIGHT = 2000 ;
 
     public static double ARM_ANGLE = 0.23;
+    public static double ARM_ANGLE_AFTER_STACK = 0.23;
 
-    public static double START_TAN = 60;
+    final public static double START_TAN = 60;
 
-    public static double MID_X = -35;
-    public static double MID_Y = -35;
-    public static double MID_TAN = 112;
+    final public static double MID_X = -35;
+    final public static double MID_Y = -35;
+    final public static double MID_TAN = 112;
 
-    public static double HIGH_X = -26.5;
-    public static double HIGH_Y = -12.4;
+    public static double HIGH_X = -27;
+    public static double HIGH_Y = -12.3;
     public static double HIGH_TAN = 20;
 
-    final public static int STACK_START = 625;
-    final public static int STACK_MID = 1000;
+    public static int STACK_START = 465;
+    public static int STACK_MID = 1000;
     final public static int STACK_INC = 140;
+
+    public static double STACK_X = -53.8;
+    public static double STACK_Y = -13.7;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -65,7 +69,7 @@ public class LeftCycle extends LinearOpMode {
         int signal_pos = 0;
 
         Pose2d startPose = new Pose2d(-39, -63.5 + 3.6, Math.toRadians(-90));
-        Vector2d stack = new Vector2d(-59.3, -14);
+        Vector2d stack = new Vector2d(STACK_X, STACK_Y);
 
         Pose2d midPoint = new Pose2d(MID_X, MID_Y, Math.toRadians(-90));
 
@@ -80,6 +84,8 @@ public class LeftCycle extends LinearOpMode {
 
                 .setTangent(Math.toRadians(START_TAN))
                 .splineToConstantHeading(midPoint.vec(), Math.toRadians(MID_TAN))
+                //.splineToConstantHeading(highCone.vec(), Math.toRadians(HIGH_TAN))
+                //.turn(Math.toRadians(90))
                 .splineToSplineHeading(highCone, Math.toRadians(HIGH_TAN))
 
                 .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(HIGH_HEIGHT, 1))
@@ -88,38 +94,65 @@ public class LeftCycle extends LinearOpMode {
                 .build();
 
         TrajectorySequence cycle = drive.trajectorySequenceBuilder(toHigh.end())
+                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> {
+                    lift.goToSavedPos();
+                    lift.lowerSavedPos();
+                })
+
+                .UNSTABLE_addTemporalMarkerOffset(0.2, claw::partial_open)
+                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::back)
+
+                // drive to stack
                 .setTangent(Math.toRadians(198))
                 .splineToConstantHeading(stack, Math.toRadians(180))
+
+                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> claw.set(0.51))
+                .waitSeconds(1)
+
+                // raises lift
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(STACK_MID, 1))
+                .waitSeconds(0.3)
+
+                .UNSTABLE_addTemporalMarkerOffset(0.6, () -> arm.set(ARM_ANGLE_AFTER_STACK))
+
+                .UNSTABLE_addTemporalMarkerOffset(1, () -> lift.goTo(HIGH_HEIGHT, 1))
+                .setTangent(Math.toRadians(0))
+                .splineToConstantHeading(highCone.vec(), Math.toRadians(10))
+
+                .UNSTABLE_addTemporalMarkerOffset(1.5, claw::open)
+                .waitSeconds(1.5)
                 .build();
 
         TrajectorySequence park1 = drive.trajectorySequenceBuilder(cycle.end())
                 .waitSeconds(0.2)
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
-                .setTangent(Math.toRadians(-140))
-                .splineToConstantHeading(new Vector2d(10, -13), Math.toRadians(180))
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
+                .UNSTABLE_addTemporalMarkerOffset(1, claw::open)
+                .UNSTABLE_addTemporalMarkerOffset(1, arm::forward)
+
+                .setTangent(Math.toRadians(198))
+                .splineToConstantHeading(stack.plus(new Vector2d(-3, 0)), Math.toRadians(180))
                 .build();
 
         TrajectorySequence park2 = drive.trajectorySequenceBuilder(cycle.end())
                 .waitSeconds(0.2)
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
-                .lineTo(new Vector2d(36, -14))
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
+                .UNSTABLE_addTemporalMarkerOffset(1, claw::open)
+                .UNSTABLE_addTemporalMarkerOffset(1, arm::forward)
+
+                .lineTo(new Vector2d(-36, -14))
                 .build();
 
         TrajectorySequence park3 = drive.trajectorySequenceBuilder(cycle.end())
                 .waitSeconds(0.2)
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
-                .setTangent(Math.toRadians(-18))
-                .splineToConstantHeading(stack.plus(new Vector2d(-3,0)), Math.toRadians(0))
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
+                .UNSTABLE_addTemporalMarkerOffset(1, claw::open)
+                .UNSTABLE_addTemporalMarkerOffset(1, arm::forward)
+
+                .lineTo(new Vector2d(-11, -12))
                 .build();
 
         claw.close();
         arm.forward();
 
         while (!isStarted() && !isStopRequested()) {
-            //at.detect();
+            at.detect();
         }
 
         if (at.tagOfInterest != null) {
@@ -128,7 +161,9 @@ public class LeftCycle extends LinearOpMode {
 
         if (!isStopRequested()) {
             drive.followTrajectorySequence(toHigh);
-            //drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(cycle);
+//            drive.followTrajectorySequence(cycle);
 
             if (signal_pos == 1) {
                 drive.followTrajectorySequence(park1);

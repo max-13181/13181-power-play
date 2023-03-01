@@ -41,8 +41,9 @@ public class MeepMeepTesting {
                         .splineToConstantHeading(midPoint.vec(), Math.toRadians(100))
                         .splineToSplineHeading(highCone, Math.toRadians(70))
                         //.waitSeconds(1)
-                        //.setTangent(Math.toRadians(198))
-                        //.splineToConstantHeading(stack, Math.toRadians(180))
+
+                        .setTangent(Math.toRadians(0))
+                        .lineTo(new Vector2d(-11, -12))
                         .build()
         );
 
