@@ -155,6 +155,9 @@ public class MixedMechanumDrive extends LinearOpMode {
       } else if (!gamepad2.y) {
         arm_prev = false;
       }
+      if (gamepad2.x) {
+        arm_pos = 0.4;
+      }
       if (arm.getPosition() < arm_pos) {
         arm.setPosition(arm.getPosition() + 0.01);
       } else if (arm.getPosition() > arm_pos) {
@@ -171,7 +174,7 @@ public class MixedMechanumDrive extends LinearOpMode {
       }
 
       if (gamepad2.right_bumper) {
-        claw_pos = 0.57; // close
+        claw_pos = 0.65; // close
       } else {
         claw_pos = 1;
       }

@@ -34,7 +34,7 @@ public class RightCycle extends LinearOpMode {
 
     public static int HIGH_HEIGHT = 3700;
     public static int MID_HEIGHT = 1650;
-    public static int STACK_START = 625;
+    public static int STACK_START = 650;
     public static int STACK_MID = 1000;
     public static int STACK_INC = 140;
 
@@ -52,10 +52,10 @@ public class RightCycle extends LinearOpMode {
         int signal_pos = 0;
 
         Pose2d startPose = new Pose2d(31+5.0/8.0, -63.5 + 4 + 3.0/8.0, Math.toRadians(-90));
-        Vector2d stack = new Vector2d(59.3, -14);
+        Vector2d stack = new Vector2d(59.2, -14);
 
         Pose2d highCone =               new Pose2d(31, -11.1, Math.toRadians(0));
-        Vector2d highConeAfterStack = new Vector2d(31.7, -12.2);
+        Vector2d highConeAfterStack = new Vector2d(31.9, -12.4);
 
         drive.setPoseEstimate(startPose);
 
@@ -127,7 +127,7 @@ public class RightCycle extends LinearOpMode {
                 .waitSeconds(0.2)
                 .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
                 .setTangent(Math.toRadians(-18))
-                .splineToConstantHeading(stack.plus(new Vector2d(-3,0)), Math.toRadians(0))
+                .splineToConstantHeading(stack.plus(new Vector2d(-2,0)), Math.toRadians(0))
                 .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
                 .build();
 
