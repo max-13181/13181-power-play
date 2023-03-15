@@ -30,11 +30,12 @@ import java.util.ArrayList;
 
 @Config
 @Autonomous(group="alpha")
-public class RightCycle extends LinearOpMode {
+public class NeoRightCycle extends LinearOpMode {
 
-    public static int HIGH_HEIGHT = 3750;
+    public static int FIRST_HIGH = 3850;
+    public static int STACK_HIGH = 3750;
     public static int MID_HEIGHT = 1800;
-    public static int STACK_START = 510;
+    public static int STACK_START = 550;
     public static int STACK_MID = 1000;
     public static int STACK_INC = 125;
 
@@ -52,25 +53,24 @@ public class RightCycle extends LinearOpMode {
         int signal_pos = 3;
 
         Pose2d startPose = new Pose2d(31+5.0/8.0, -63.5 + 4 + 3.0/8.0, Math.toRadians(-90));
-        Vector2d stack = new Vector2d(59.2, -14);
+        Vector2d stack = new Vector2d(59.5, -14);
 
-        Pose2d highCone =               new Pose2d(30.5, -10, Math.toRadians(0));
-        Vector2d highConeAfterStack = new Vector2d(32, -11);
+        Pose2d highCone = new Pose2d(30, -11.8, Math.toRadians(0));
 
         drive.setPoseEstimate(startPose);
 
         TrajectorySequence toHigh = drive.trajectorySequenceBuilder(startPose)
-                .back(0.3)
-                .UNSTABLE_addTemporalMarkerOffset(0, claw::close)
-                .waitSeconds(0.3)
+                .setConstraints(getVel(1.25), getAcc(1.25))
+                .back(0.5)
 
                 .UNSTABLE_addTemporalMarkerOffset(0.2, () -> lift.goTo(MID_HEIGHT, 1))
-                .UNSTABLE_addTemporalMarkerOffset(2.5, arm::mid) // sets arm at an angle
 
                 .setTangent(Math.toRadians(75))
-                .splineToSplineHeading(highCone, Math.toRadians(106))
+                .splineToConstantHeading(highCone.vec(), Math.toRadians(106))
+                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::mid) // sets arm at an angle
+                .turn(Math.toRadians(90))
 
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(HIGH_HEIGHT, 1))
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(FIRST_HIGH, 1))
                 .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
                 .waitSeconds(DROP_DELAY)
                 .build();
@@ -82,7 +82,7 @@ public class RightCycle extends LinearOpMode {
                 })
 
                 .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
-                .UNSTABLE_addTemporalMarkerOffset(0.2, claw::partial_open)
+//                .UNSTABLE_addTemporalMarkerOffset(0.2, claw::partial_open)
 
                 // drive to stack
                 .setTangent(Math.toRadians(-18))
@@ -95,12 +95,12 @@ public class RightCycle extends LinearOpMode {
                 .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(STACK_MID, 1))
                 .waitSeconds(0.3)
 
-                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::mid)
+                .UNSTABLE_addTemporalMarkerOffset(0.4, arm::mid)
                 .UNSTABLE_addTemporalMarkerOffset(0.3, () -> lift.goTo(MID_HEIGHT, 1))
 
-                .UNSTABLE_addTemporalMarkerOffset(1.5, () -> lift.goTo(HIGH_HEIGHT, 1))
+                .UNSTABLE_addTemporalMarkerOffset(1.5, () -> lift.goTo(STACK_HIGH, 1))
                 .setTangent(Math.toRadians(180))
-                .splineToConstantHeading(highConeAfterStack, Math.toRadians(180+10))
+                .splineToConstantHeading(highCone.vec(), Math.toRadians(180+10))
 
                 .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
                 .waitSeconds(DROP_DELAY)
@@ -254,7 +254,7 @@ public class RightCycle extends LinearOpMode {
 
     class AprilTag {
         OpenCvCamera camera;
-        org.firstinspires.ftc.teamcode.AprilTagDetectionPipeline aprilTagDetectionPipeline;
+        AprilTagDetectionPipeline aprilTagDetectionPipeline;
 
         static final double FEET_PER_METER = 3.28084;
 
@@ -275,7 +275,7 @@ public class RightCycle extends LinearOpMode {
         public AprilTag() {
             int cameraMonitorViewId = hardwareMap.appContext.getResources().getIdentifier("cameraMonitorViewId", "id", hardwareMap.appContext.getPackageName());
             camera = OpenCvCameraFactory.getInstance().createWebcam(hardwareMap.get(WebcamName.class, "Webcam 1"), cameraMonitorViewId);
-            aprilTagDetectionPipeline = new org.firstinspires.ftc.teamcode.AprilTagDetectionPipeline(tagsize, fx, fy, cx, cy);
+            aprilTagDetectionPipeline = new AprilTagDetectionPipeline(tagsize, fx, fy, cx, cy);
 
             camera.setPipeline(aprilTagDetectionPipeline);
             camera.openCameraDeviceAsync(new OpenCvCamera.AsyncCameraOpenListener()
