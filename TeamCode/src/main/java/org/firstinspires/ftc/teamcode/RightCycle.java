@@ -32,7 +32,7 @@ import java.util.ArrayList;
 @Autonomous(group="alpha")
 public class RightCycle extends LinearOpMode {
 
-    public static int HIGH_HEIGHT = 3750;
+    public static int HIGH_HEIGHT = 2000;
     public static int MID_HEIGHT = 1800;
     public static int STACK_START = 510;
     public static int STACK_MID = 1000;
@@ -51,28 +51,24 @@ public class RightCycle extends LinearOpMode {
 
         int signal_pos = 3;
 
-        Pose2d startPose = new Pose2d(31+5.0/8.0, -63.5 + 4 + 3.0/8.0, Math.toRadians(-90));
+        Pose2d startPose = new Pose2d(31.75, -62, Math.toRadians(90));
         Vector2d stack = new Vector2d(59.2, -14);
 
-        Pose2d highCone =               new Pose2d(30.5, -10, Math.toRadians(0));
+        Pose2d highCone =               new Pose2d(30.5, -8, Math.toRadians(0));
         Vector2d highConeAfterStack = new Vector2d(32, -11);
 
         drive.setPoseEstimate(startPose);
 
         TrajectorySequence toHigh = drive.trajectorySequenceBuilder(startPose)
-                .back(0.3)
-                .UNSTABLE_addTemporalMarkerOffset(0, claw::close)
-                .waitSeconds(0.3)
+                .setConstraints(getVel(1.5), getAcc(1.5))
 
-                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> lift.goTo(MID_HEIGHT, 1))
-                .UNSTABLE_addTemporalMarkerOffset(2.5, arm::mid) // sets arm at an angle
-
-                .setTangent(Math.toRadians(75))
+                .UNSTABLE_addTemporalMarkerOffset(1, arm::mid) // sets arm at an angle
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(HIGH_HEIGHT, 1))
+                .setTangent(Math.toRadians(65))
                 .splineToSplineHeading(highCone, Math.toRadians(106))
 
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(HIGH_HEIGHT, 1))
-                .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
-                .waitSeconds(DROP_DELAY)
+//                .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
+//                .waitSeconds(DROP_DELAY)
                 .build();
 
         TrajectorySequence cycle = drive.trajectorySequenceBuilder(toHigh.end())
@@ -143,6 +139,8 @@ public class RightCycle extends LinearOpMode {
         if (!isStopRequested()) {
             claw.close();
             drive.followTrajectorySequence(toHigh);
+
+            /*
             drive.followTrajectorySequence(cycle);
             drive.followTrajectorySequence(cycle);
             drive.followTrajectorySequence(cycle);
@@ -154,6 +152,7 @@ public class RightCycle extends LinearOpMode {
             } else if (signal_pos == 3) {
                 drive.followTrajectorySequence(park3);
             }
+            // */
         }
 
         telemetry.addLine("done");
