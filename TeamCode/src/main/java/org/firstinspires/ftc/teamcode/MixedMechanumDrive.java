@@ -9,6 +9,7 @@ import com.qualcomm.robotcore.hardware.Gamepad;
 import com.qualcomm.robotcore.hardware.Servo;
 import com.qualcomm.robotcore.util.ElapsedTime;
 
+import org.firstinspires.ftc.robotcore.external.navigation.Orientation;
 import org.firstinspires.ftc.teamcode.roadrunner.util.AxisDirection;
 import org.firstinspires.ftc.teamcode.roadrunner.util.BNO055IMUUtil;
 
@@ -16,17 +17,25 @@ import org.firstinspires.ftc.teamcode.roadrunner.util.BNO055IMUUtil;
 public class MixedMechanumDrive extends LinearOpMode {
   @Override
   public void runOpMode() {
-    Gamepad.RumbleEffect customRumbleEffect = new Gamepad.RumbleEffect.Builder()
+    Gamepad.RumbleEffect rumble_60 = new Gamepad.RumbleEffect.Builder()
             .addStep(0.5, 0.5, 200)  //  Rumble for 500 mSec
             .addStep(0.0, 0.0, 200)  //  Pause for 500 mSec
             .addStep(0.5, 0.5, 200)  //  Rumble for 500 mSec
             .addStep(0.0, 0.0, 200)  //  Pause for 500 mSec
             .addStep(0.5, 0.5, 200)  //  Rumble for 500 mSec
             .build();
+
+    Gamepad.RumbleEffect rumble_75 = new Gamepad.RumbleEffect.Builder()
+            .addStep(1, 1, 2000)  //  Rumble for 2000 mSec
+            .addStep(0.0, 0.0, 200)  //  Pause for 200 mSe
+            .build();
+
     ElapsedTime runtime = new ElapsedTime();
 
     double speedMod = 1;
-    boolean has_rumbled = false;
+    boolean has_rumbled_60 = false;
+    boolean has_rumbled_75 = false;
+    double correction = 0;
 
     double claw_pos = 1;
     double arm_pos = 0;
@@ -78,16 +87,34 @@ public class MixedMechanumDrive extends LinearOpMode {
 
     while (opModeIsActive()) {
 
-      if (runtime.seconds() > 60 && !has_rumbled) {
-        gamepad1.runRumbleEffect(customRumbleEffect);
-        gamepad2.runRumbleEffect(customRumbleEffect);
-        has_rumbled = true;
+      if (runtime.seconds() > 60 && !has_rumbled_60) {
+        gamepad1.runRumbleEffect(rumble_60);
+        gamepad2.runRumbleEffect(rumble_60);
+        has_rumbled_60 = true;
+      }
+
+      if (runtime.seconds() > 75 && !has_rumbled_75) {
+        gamepad1.runRumbleEffect(rumble_75);
+        gamepad2.runRumbleEffect(rumble_75);
+        has_rumbled_75 = true;
+      }
+
+      // communication
+      if (gamepad2.right_trigger != 0) {
+        gamepad1.rumble(20);
+      }
+      if (gamepad1.y) {
+        gamepad2.rumble(20);
       }
 
       if (gamepad1.left_bumper) {
         speedMod = 1;
+      } else if (gamepad1.right_bumper) {
+        speedMod = 0.75;
       } else if (gamepad1.left_trigger != 0) {
         speedMod = 0.3;
+      } else if (gamepad1.right_trigger != 0) {
+        speedMod = gamepad1.right_trigger;
       } else {
         speedMod = 0.5;
       }
@@ -109,15 +136,24 @@ public class MixedMechanumDrive extends LinearOpMode {
       }
 
       if (gamepad1.y) {
-        imu.initialize(parameters);
+        imu.initialize(parameters); // reset imu
       }
 
-      y = gamepad1.left_stick_y * speedMod; // Remember, this is reversed!
-      x = gamepad1.left_stick_x * 1.1 * speedMod; // Counteract imperfect strafing
-      rx = gamepad1.right_stick_x;
+      y = gamepad1.left_stick_y; // Remember, this is reversed!
+      x = -gamepad1.left_stick_x * 1.1; // Counteract imperfect strafing
+      rx = -gamepad1.right_stick_x;
+
+      Orientation angularOri = imu.getAngularOrientation();
+
+      // training wheels
+//      if (Math.abs(Math.toDegrees(angularOri.secondAngle)) > 2) {
+//        correction = Math.toDegrees(angularOri.secondAngle) / 8;
+//      } else {
+//        correction = 0;
+//      }
 
       // Read inverse IMU heading, as the IMU heading is CW positive
-      botHeading = -imu.getAngularOrientation().firstAngle;
+      botHeading = -angularOri.firstAngle;
 
       if (dpadx != 0 || dpady != 0) {
         //botHeading = angleFix(botHeading);
@@ -134,16 +170,17 @@ public class MixedMechanumDrive extends LinearOpMode {
         frontRightPower = (rotY - rotX - rx) / denominator;
         backRightPower = (rotY + rotX - rx) / denominator;
       } else {
-        frontLeftPower = (y - x - rx);
-        frontRightPower = (y + x + rx);
-        backLeftPower = (y + x - rx);
-        backRightPower = (y - x + rx);
+        double denominator = Math.max(Math.abs(y) + Math.abs(x) + Math.abs(rx), 1);
+        frontLeftPower = (y + x + rx) / denominator;
+        backLeftPower = (y - x + rx) / denominator;
+        frontRightPower = (y - x - rx) / denominator;
+        backRightPower = (y + x - rx) / denominator;
       }
 
-      front_left.setPower(frontLeftPower * speedMod);
-      back_left.setPower(backLeftPower * speedMod);
-      front_right.setPower(frontRightPower * speedMod);
-      back_right.setPower(backRightPower * speedMod);
+      front_left.setPower(frontLeftPower * speedMod + correction);
+      back_left.setPower(backLeftPower * speedMod + correction);
+      front_right.setPower(frontRightPower * speedMod + correction);
+      back_right.setPower(backRightPower * speedMod + correction);
 
       if (gamepad2.y && !arm_prev) {
         if (arm_pos == 1) {
@@ -155,9 +192,11 @@ public class MixedMechanumDrive extends LinearOpMode {
       } else if (!gamepad2.y) {
         arm_prev = false;
       }
+
       if (gamepad2.x) {
         arm_pos = 0.4;
       }
+
       if (arm.getPosition() < arm_pos) {
         arm.setPosition(arm.getPosition() + 0.01);
       } else if (arm.getPosition() > arm_pos) {
@@ -180,15 +219,16 @@ public class MixedMechanumDrive extends LinearOpMode {
       }
       claw.setPosition(claw_pos);
 
-      telemetry.addData("bot angle", Math.toDegrees(botHeading));
-      telemetry.addData("lift power", lift.getPower());
-      telemetry.addData("lift pos", lift.getCurrentPosition());
-      telemetry.addData("arm pos", arm.getPosition());
-      telemetry.addData("arm_pos", arm_pos);
-//      telemetry.addData("x1", gamepad1.touchpad_finger_1_x);
-//      telemetry.addData("y1", gamepad1.touchpad_finger_1_y);
-//      telemetry.addData("x2", gamepad1.touchpad_finger_2_x);
-//      telemetry.addData("y2", gamepad1.touchpad_finger_2_y);
+      telemetry.addData("2nd ang", Math.toDegrees(angularOri.secondAngle));
+
+      telemetry.addData("correction", correction);
+
+      /*
+      telemetry.addData("x1", gamepad1.touchpad_finger_1_x);
+      telemetry.addData("y1", gamepad1.touchpad_finger_1_y);
+      telemetry.addData("x2", gamepad1.touchpad_finger_2_x);
+      telemetry.addData("y2", gamepad1.touchpad_finger_2_y);
+      // */
       telemetry.update();
     }
   }

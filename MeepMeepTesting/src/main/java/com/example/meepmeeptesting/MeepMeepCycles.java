@@ -22,19 +22,23 @@ public class MeepMeepCycles {
         // y is up/down
         // x is left/right
 
-        Pose2d startPose = new Pose2d(31.75, -62, Math.toRadians(-90));
-        drive.setStartPose(startPose);
+        Pose2d startPose = new Pose2d(31.75, -62, Math.toRadians(90));
 
-        Pose2d highCone = new Pose2d(-32, -8.3, Math.toRadians(0));
+        Pose2d highCone = new Pose2d(26.5, -9.51, Math.toRadians(0));
+        Vector2d stack = new Vector2d(58.5, -9.5);
+        drive.setStartPose(startPose);
 
         RoadRunnerBotEntity path = drive.followTrajectorySequence(traj ->
                 traj.trajectorySequenceBuilder(startPose)
-                        .waitSeconds(10)
                         // goes to high
-                        .setTangent(Math.toRadians(63))
-                        .splineToSplineHeading(highCone, Math.toRadians(70))
-//                        .setTangent(Math.toRadians(-160))
-//                        .splineToSplineHeading(new Pose2d(-60, -15, Math.toRadians(0)), Math.toRadians(180))
+                        .setTangent(Math.toRadians(40))
+                        .splineToSplineHeading(highCone, Math.toRadians(115))
+
+                        .setTangent(Math.toRadians(-20))
+                        .splineToConstantHeading(stack, Math.toRadians(0))
+
+                        .setTangent(Math.toRadians(180))
+                        .splineToConstantHeading(highCone.vec(), Math.toRadians(180-20))
                         .build()
         );
 

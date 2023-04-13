@@ -32,13 +32,9 @@ import java.util.ArrayList;
 @Autonomous(group="alpha")
 public class RightCycle extends LinearOpMode {
 
-    public static int HIGH_HEIGHT = 2000;
-    public static int MID_HEIGHT = 1800;
-    public static int STACK_START = 510;
-    public static int STACK_MID = 1000;
+    public static int HIGH_HEIGHT = 2750;
+    public static int STACK_START = 650;
     public static int STACK_INC = 125;
-
-    public static double DROP_DELAY = 1.5;
 
     @Override
     public void runOpMode() throws InterruptedException {
@@ -52,54 +48,50 @@ public class RightCycle extends LinearOpMode {
         int signal_pos = 3;
 
         Pose2d startPose = new Pose2d(31.75, -62, Math.toRadians(90));
-        Vector2d stack = new Vector2d(59.2, -14);
 
-        Pose2d highCone =               new Pose2d(30.5, -8, Math.toRadians(0));
-        Vector2d highConeAfterStack = new Vector2d(32, -11);
+        Pose2d highCone = new Pose2d(28.5, -8.5, Math.toRadians(0));
+        Vector2d stack = new Vector2d(58.5, -8.5);
 
         drive.setPoseEstimate(startPose);
 
         TrajectorySequence toHigh = drive.trajectorySequenceBuilder(startPose)
-                .setConstraints(getVel(1.5), getAcc(1.5))
+//                .setConstraints(getVel(1.5), getAcc(1.5))
 
                 .UNSTABLE_addTemporalMarkerOffset(1, arm::mid) // sets arm at an angle
                 .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(HIGH_HEIGHT, 1))
-                .setTangent(Math.toRadians(65))
-                .splineToSplineHeading(highCone, Math.toRadians(106))
+                .setTangent(Math.toRadians(60))
+                .splineToSplineHeading(highCone, Math.toRadians(118))
 
-//                .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
-//                .waitSeconds(DROP_DELAY)
+                .UNSTABLE_addTemporalMarkerOffset(0.4, claw::open)
+                .waitSeconds(0.6)
                 .build();
 
         TrajectorySequence cycle = drive.trajectorySequenceBuilder(toHigh.end())
-                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> {
+                .UNSTABLE_addTemporalMarkerOffset(0.4, () -> {
                     lift.goToSavedPos();
                     lift.lowerSavedPos();
                 })
 
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
+                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
                 .UNSTABLE_addTemporalMarkerOffset(0.2, claw::partial_open)
 
                 // drive to stack
-                .setTangent(Math.toRadians(-18))
-                .splineToConstantHeading(stack, Math.toRadians(0))
+                .lineTo(stack)
 
-                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> claw.set(0.51))
+                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> claw.set(0.51)) // close
                 .waitSeconds(0.6)
 
                 // raises lift
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(STACK_MID, 1))
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(HIGH_HEIGHT, 1))
                 .waitSeconds(0.3)
 
                 .UNSTABLE_addTemporalMarkerOffset(0.2, arm::mid)
-                .UNSTABLE_addTemporalMarkerOffset(0.3, () -> lift.goTo(MID_HEIGHT, 1))
 
-                .UNSTABLE_addTemporalMarkerOffset(1.5, () -> lift.goTo(HIGH_HEIGHT, 1))
-                .setTangent(Math.toRadians(180))
-                .splineToConstantHeading(highConeAfterStack, Math.toRadians(180+10))
+                .lineTo(highCone.vec())
 
-                .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
-                .waitSeconds(DROP_DELAY)
+                .UNSTABLE_addTemporalMarkerOffset(0.4, claw::open)
+                .waitSeconds(0.6)
+                // */
                 .build();
 
         TrajectorySequence park1 = drive.trajectorySequenceBuilder(toHigh.end())
@@ -138,10 +130,12 @@ public class RightCycle extends LinearOpMode {
 
         if (!isStopRequested()) {
             claw.close();
+            sleep(750);
             drive.followTrajectorySequence(toHigh);
 
-            /*
             drive.followTrajectorySequence(cycle);
+
+            /*
             drive.followTrajectorySequence(cycle);
             drive.followTrajectorySequence(cycle);
 

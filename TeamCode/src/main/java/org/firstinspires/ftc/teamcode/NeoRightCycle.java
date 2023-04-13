@@ -32,101 +32,65 @@ import java.util.ArrayList;
 @Autonomous(group="alpha")
 public class NeoRightCycle extends LinearOpMode {
 
-    public static int FIRST_HIGH = 3850;
-    public static int STACK_HIGH = 3750;
-    public static int MID_HEIGHT = 1800;
-    public static int STACK_START = 550;
-    public static int STACK_MID = 1000;
-    public static int STACK_INC = 125;
-
-    public static double DROP_DELAY = 1.5;
+    public static int HIGH_HEIGHT = 2750;
+    static int STACK_BASE = 25;
+    public static int STACK_INC = 100;
+    public static int STACK_START = STACK_BASE + (STACK_INC * 5);
 
     @Override
     public void runOpMode() throws InterruptedException {
         SampleMecanumDrive drive = new SampleMecanumDrive(hardwareMap);
         Claw claw = new Claw(hardwareMap.servo.get("claw"));
         Arm arm = new Arm(hardwareMap.servo.get("arm"));
+        arm.ARM_MID = 0.44; // override
+
         Lift lift = new Lift(hardwareMap.dcMotor.get("lift"));
 
         AprilTag at = new AprilTag();
 
         int signal_pos = 3;
 
-        Pose2d startPose = new Pose2d(31+5.0/8.0, -63.5 + 4 + 3.0/8.0, Math.toRadians(-90));
-        Vector2d stack = new Vector2d(59.5, -14);
+        Pose2d startPose = new Pose2d(31.75, -62, Math.toRadians(90));
 
-        Pose2d highCone = new Pose2d(30, -11.8, Math.toRadians(0));
+        Pose2d highCone = new Pose2d(28.5, -8.5, Math.toRadians(0));
+        Vector2d stack = new Vector2d(58.1, -9.5);
 
         drive.setPoseEstimate(startPose);
 
-        TrajectorySequence toHigh = drive.trajectorySequenceBuilder(startPose)
-                .setConstraints(getVel(1.25), getAcc(1.25))
-                .back(0.5)
+        /*
+            CONSTRUCTED WITH THE "START AT MAX SPEED THEN ADD ELEMENTS PROGRESSIVELY" METHOD
 
-                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> lift.goTo(MID_HEIGHT, 1))
+            ~ Max Eisenbeiser 2023-04-05
+         */
+
+        TrajectorySequence toHigh = drive.trajectorySequenceBuilder(startPose)
+                .UNSTABLE_addTemporalMarkerOffset(0, claw::close)
+                .UNSTABLE_addTemporalMarkerOffset(0.3, () -> lift.goTo(HIGH_HEIGHT, 1))
+                .UNSTABLE_addTemporalMarkerOffset(1, arm::mid) // sets arm at an angle
 
                 .setTangent(Math.toRadians(75))
-                .splineToConstantHeading(highCone.vec(), Math.toRadians(106))
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::mid) // sets arm at an angle
-                .turn(Math.toRadians(90))
-
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(FIRST_HIGH, 1))
-                .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
-                .waitSeconds(DROP_DELAY)
+                .splineToSplineHeading(highCone, Math.toRadians(118))
+                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
                 .build();
 
         TrajectorySequence cycle = drive.trajectorySequenceBuilder(toHigh.end())
-                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> {
+                .UNSTABLE_addTemporalMarkerOffset(0.4, () -> {
                     lift.goToSavedPos();
                     lift.lowerSavedPos();
                 })
+                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::forward)
 
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
-//                .UNSTABLE_addTemporalMarkerOffset(0.2, claw::partial_open)
+                .UNSTABLE_addDisplacementMarkerOffset(26, claw::close)
 
-                // drive to stack
-                .setTangent(Math.toRadians(-18))
+                .setTangent(Math.toRadians(-10))
                 .splineToConstantHeading(stack, Math.toRadians(0))
 
-                .UNSTABLE_addTemporalMarkerOffset(0.2, () -> claw.set(0.51))
-                .waitSeconds(0.6)
+                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(HIGH_HEIGHT, 1))
+                .UNSTABLE_addTemporalMarkerOffset(0.2, arm::mid)
 
-                // raises lift
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(STACK_MID, 1))
-                .waitSeconds(0.3)
-
-                .UNSTABLE_addTemporalMarkerOffset(0.4, arm::mid)
-                .UNSTABLE_addTemporalMarkerOffset(0.3, () -> lift.goTo(MID_HEIGHT, 1))
-
-                .UNSTABLE_addTemporalMarkerOffset(1.5, () -> lift.goTo(STACK_HIGH, 1))
                 .setTangent(Math.toRadians(180))
-                .splineToConstantHeading(highCone.vec(), Math.toRadians(180+10))
-
-                .UNSTABLE_addTemporalMarkerOffset(DROP_DELAY, claw::open)
-                .waitSeconds(DROP_DELAY)
-                .build();
-
-        TrajectorySequence park1 = drive.trajectorySequenceBuilder(toHigh.end())
-                .waitSeconds(0.2)
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
-                .setTangent(Math.toRadians(-140))
-                .splineToConstantHeading(new Vector2d(10, -13), Math.toRadians(180))
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
-                .build();
-
-        TrajectorySequence park2 = drive.trajectorySequenceBuilder(toHigh.end())
-                .waitSeconds(0.2)
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
-                .lineTo(new Vector2d(36, -14))
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
-                .build();
-
-        TrajectorySequence park3 = drive.trajectorySequenceBuilder(toHigh.end())
-                .waitSeconds(0.2)
-                .UNSTABLE_addTemporalMarkerOffset(0.5, arm::forward)
-                .setTangent(Math.toRadians(-18))
-                .splineToConstantHeading(stack.plus(new Vector2d(-2,0)), Math.toRadians(0))
-                .UNSTABLE_addTemporalMarkerOffset(0, () -> lift.goTo(1000, 1))
+                .splineToConstantHeading(highCone.vec(), Math.toRadians(180-10))
+                .UNSTABLE_addTemporalMarkerOffset(0, claw::open)
                 .build();
 
         claw.open();
@@ -141,19 +105,12 @@ public class NeoRightCycle extends LinearOpMode {
         }
 
         if (!isStopRequested()) {
-            claw.close();
             drive.followTrajectorySequence(toHigh);
             drive.followTrajectorySequence(cycle);
             drive.followTrajectorySequence(cycle);
             drive.followTrajectorySequence(cycle);
-
-            if (signal_pos == 1) {
-                drive.followTrajectorySequence(park1);
-            } else if (signal_pos == 2) {
-                drive.followTrajectorySequence(park2);
-            } else if (signal_pos == 3) {
-                drive.followTrajectorySequence(park3);
-            }
+            drive.followTrajectorySequence(cycle);
+            drive.followTrajectorySequence(cycle);
         }
 
         telemetry.addLine("done");
